@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Lock, User } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Lock, User } from "lucide-react";
 
 const UsersPage = () => {
+  const navigate = useNavigate();
   const { users, addUser, updateUser } = useAuth();
   const [isAddingUser, setIsAddingUser] = useState(false);
   
@@ -41,7 +43,12 @@ const UsersPage = () => {
   return (
     <PageLayout requireAuth requireAdmin title="Manage Users">
       <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          
           <Dialog open={isAddingUser} onOpenChange={setIsAddingUser}>
             <DialogTrigger asChild>
               <Button>

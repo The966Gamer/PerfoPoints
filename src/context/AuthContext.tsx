@@ -3,25 +3,32 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { User } from "@/types";
 
-// Mock database for demo - this would be replaced with Firebase
+// Modified database for Mom and Dad as admins, kids as users
 const DEMO_USERS: User[] = [
   {
     id: "admin1",
-    username: "parent",
+    username: "Mom",
+    role: "admin",
+    points: 0,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "admin2",
+    username: "Dad",
     role: "admin",
     points: 0,
     createdAt: new Date().toISOString(),
   },
   {
     id: "user1",
-    username: "child1",
+    username: "Kid1",
     role: "user",
     points: 75,
     createdAt: new Date().toISOString(),
   },
   {
     id: "user2",
-    username: "child2",
+    username: "Kid2",
     role: "user",
     points: 120,
     createdAt: new Date().toISOString(),
@@ -49,9 +56,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Simple storage for demo - store just usernames and passwords
 const DEMO_AUTH = {
-  "parent": hashPassword("admin123"),
-  "child1": hashPassword("child123"),
-  "child2": hashPassword("child456"),
+  "Mom": hashPassword("mom123"),
+  "Dad": hashPassword("dad123"),
+  "Kid1": hashPassword("kid123"),
+  "Kid2": hashPassword("kid456"),
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -114,6 +122,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check if username already exists
       if (users.some(u => u.username === username)) {
         toast.error("Username already exists");
+        return false;
+      }
+      
+      // Check if trying to register as admin with reserved names
+      if (role === "admin" && !["Mom", "Dad"].includes(username)) {
+        toast.error("Only 'Mom' and 'Dad' can be administrators");
         return false;
       }
       

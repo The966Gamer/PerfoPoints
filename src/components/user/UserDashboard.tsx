@@ -1,113 +1,83 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCard } from "./TaskCard";
 import { RewardCard } from "./RewardCard";
-import { Progress } from "@/components/ui/progress";
+import { Leaderboard } from "./Leaderboard";
+import { CalendarCheck, Gift, Trophy } from "lucide-react";
 
 export function UserDashboard() {
   const { currentUser } = useAuth();
-  const { tasks, rewards, getUserTransactions } = useData();
-  const navigate = useNavigate();
-  
+  const { tasks, rewards } = useData();
+
   if (!currentUser) return null;
-  
-  const userTransactions = getUserTransactions(currentUser.id).slice(0, 5);
-  const featuredTasks = tasks.slice(0, 3);
-  const featuredRewards = rewards.slice(0, 3);
-  
-  // Find the highest cost reward to show on progress
-  const highestReward = rewards.reduce((max, reward) => 
-    reward.pointCost > max.pointCost ? reward : max, 
-    {pointCost: 0, title: "No rewards available"}
-  );
-  
-  const progressPercentage = highestReward.pointCost > 0 
-    ? Math.min(100, (currentUser.points / highestReward.pointCost) * 100)
-    : 0;
-    
+
   return (
-    <div className="space-y-6">
-      {/* User Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Points</CardTitle>
-            <CardDescription>Current point balance and progress</CardDescription>
+    <div className="grid gap-6">
+      <div className="flex items-center justify-center">
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold text-center">
+              {currentUser.points}
+              <span className="ml-2 text-xl font-normal text-muted-foreground">points</span>
+            </CardTitle>
+            <CardDescription className="text-center">
+              Complete tasks to earn more points!
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-6xl font-bold text-primary">{currentUser.points}</div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Progress to {highestReward.title}</span>
-                <span>{currentUser.points} / {highestReward.pointCost}</span>
-              </div>
-              <Progress value={progressPercentage} className="h-2" />
-            </div>
-          </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Your latest point transactions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {userTransactions.length > 0 ? (
-              <ul className="space-y-2">
-                {userTransactions.map((transaction) => (
-                  <li key={transaction.id} className="flex justify-between items-center text-sm">
-                    <span className="truncate mr-4">{transaction.description}</span>
-                    <span className={`font-medium ${transaction.type === 'earned' ? 'text-success' : 'text-destructive'}`}>
-                      {transaction.type === 'earned' ? '+' : ''}{transaction.amount}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+      </div>
+
+      <Tabs defaultValue="tasks" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="tasks" className="flex items-center gap-2">
+            <CalendarCheck className="h-4 w-4" /> Tasks
+          </TabsTrigger>
+          <TabsTrigger value="rewards" className="flex items-center gap-2">
+            <Gift className="h-4 w-4" /> Rewards
+          </TabsTrigger>
+          <TabsTrigger value="leaderboard" className="flex items-center gap-2">
+            <Trophy className="h-4 w-4" /> Leaderboard
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tasks" className="mt-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {tasks.length > 0 ? (
+              tasks.map(task => <TaskCard key={task.id} task={task} />)
             ) : (
-              <div className="text-muted-foreground text-center py-8">
-                No activity yet
+              <div className="col-span-full text-center py-10">
+                <h3 className="text-lg font-medium mb-2">No tasks available</h3>
+                <p className="text-muted-foreground">
+                  Check back soon for new tasks to complete
+                </p>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Available Tasks */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Available Tasks</h2>
-          <Button variant="outline" onClick={() => navigate("/tasks")}>
-            View All Tasks
-          </Button>
-        </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="rewards" className="mt-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {rewards.length > 0 ? (
+              rewards.map(reward => <RewardCard key={reward.id} reward={reward} />)
+            ) : (
+              <div className="col-span-full text-center py-10">
+                <h3 className="text-lg font-medium mb-2">No rewards available</h3>
+                <p className="text-muted-foreground">
+                  Check back soon for rewards to redeem with your points
+                </p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {featuredTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </div>
-      </div>
-      
-      {/* Available Rewards */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Rewards Shop</h2>
-          <Button variant="outline" onClick={() => navigate("/rewards")}>
-            View All Rewards
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {featuredRewards.map((reward) => (
-            <RewardCard key={reward.id} reward={reward} />
-          ))}
-        </div>
-      </div>
+        <TabsContent value="leaderboard" className="mt-6">
+          <Leaderboard />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
