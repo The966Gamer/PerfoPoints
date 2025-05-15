@@ -66,11 +66,17 @@ const Login = () => {
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex justify-center">
+          <CardFooter className="flex justify-center flex-col gap-4">
             <div className="text-sm text-center text-muted-foreground">
               <div className="mb-2">Demo accounts:</div>
               <div>Admin: parent / admin123</div>
               <div>User: child1 / child123</div>
+            </div>
+            <div className="text-sm text-center">
+              <p className="text-muted-foreground">
+                Note: For email-based authentication and custom task/reward requests, 
+                please connect to Supabase using the Supabase button in the top right.
+              </p>
             </div>
           </CardFooter>
         </Card>

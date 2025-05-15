@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addUser = async (username: string, password: string): Promise<boolean> => {
-    if (!currentUser?.role === "admin") {
+    if (!currentUser || currentUser.role !== "admin") {
       toast.error("Only administrators can add users");
       return false;
     }
