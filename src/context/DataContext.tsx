@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useState } from "react";
 import { toast } from "sonner";
-import { Task, Reward, PointRequest, PointTransaction } from "@/types";
+import { Task, Reward, PointRequest, PointTransaction, CustomRequest } from "@/types";
 import { useAuth } from "./AuthContext";
 
 // Mock data for demo purposes - this would be replaced with Firebase
@@ -107,11 +106,14 @@ const DEMO_TRANSACTIONS: PointTransaction[] = [
   }
 ];
 
+const DEMO_CUSTOM_REQUESTS: CustomRequest[] = [];
+
 interface DataContextType {
   tasks: Task[];
   rewards: Reward[];
   requests: PointRequest[];
   transactions: PointTransaction[];
+  customRequests: CustomRequest[];
   addTask: (task: Omit<Task, "id" | "createdAt" | "createdBy">) => Promise<void>;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
@@ -122,6 +124,10 @@ interface DataContextType {
   reviewPointRequest: (requestId: string, approved: boolean) => Promise<void>;
   redeemReward: (rewardId: string) => Promise<void>;
   getUserTransactions: (userId: string) => PointTransaction[];
+  createCustomRequest: (request: Omit<CustomRequest, "id" | "status" | "createdAt" | "userId" | "username">) => Promise<void>;
+  reviewCustomRequest: (requestId: string, approved: boolean) => Promise<void>;
+  sendMessage: (userId: string, message: string) => Promise<void>;
+  giftPoints: (fromUserId: string, toUserId: string, amount: number, message?: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -132,6 +138,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [rewards, setRewards] = useState<Reward[]>(DEMO_REWARDS);
   const [requests, setRequests] = useState<PointRequest[]>(DEMO_REQUESTS);
   const [transactions, setTransactions] = useState<PointTransaction[]>(DEMO_TRANSACTIONS);
+  const [customRequests, setCustomRequests] = useState<CustomRequest[]>(DEMO_CUSTOM_REQUESTS);
 
   const addTask = async (taskData: Omit<Task, "id" | "createdAt" | "createdBy">) => {
     try {
@@ -394,6 +401,140 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const createCustomRequest = async (requestData: Omit<CustomRequest, "id" | "status" | "createdAt" | "userId" | "username">) => {
+    try {
+      if (!currentUser) {
+        toast.error("You must be logged in to submit a request");
+        return;
+      }
+
+      const newRequest: CustomRequest = {
+        ...requestData,
+        id: `custom${Date.now()}`,
+        status: "pending",
+        userId: currentUser.id,
+        username: currentUser.username,
+        createdAt: new Date().toISOString(),
+      };
+
+      setCustomRequests(prev => [...prev, newRequest]);
+      toast.success("Your request has been submitted for review");
+    } catch (error) {
+      console.error("Create custom request error:", error);
+      toast.error("Failed to submit request");
+    }
+  };
+
+  const reviewCustomRequest = async (requestId: string, approved: boolean) => {
+    try {
+      if (!currentUser || currentUser.role !== "admin") {
+        toast.error("Only admins can review requests");
+        return;
+      }
+
+      const request = customRequests.find(r => r.id === requestId);
+      if (!request) {
+        toast.error("Request not found");
+        return;
+      }
+
+      if (request.status !== "pending") {
+        toast.error("This request has already been reviewed");
+        return;
+      }
+
+      const updatedRequest: CustomRequest = {
+        ...request,
+        status: approved ? "approved" : "denied",
+        reviewedBy: currentUser.id,
+        reviewedAt: new Date().toISOString(),
+      };
+
+      setCustomRequests(prev =>
+        prev.map(req =>
+          req.id === requestId ? updatedRequest : req
+        )
+      );
+
+      if (approved) {
+        toast.success(`Approved request from ${request.username}`);
+      } else {
+        toast.info(`Denied request from ${request.username}`);
+      }
+    } catch (error) {
+      console.error("Review custom request error:", error);
+      toast.error("Failed to review request");
+    }
+  };
+
+  const sendMessage = async (userId: string, message: string) => {
+    try {
+      if (!currentUser) {
+        toast.error("You must be logged in to send messages");
+        return;
+      }
+
+      // In a real app, this would save to a database
+      console.log(`Message from ${currentUser.id} to ${userId}: ${message}`);
+      toast.success("Message sent successfully");
+    } catch (error) {
+      console.error("Send message error:", error);
+      toast.error("Failed to send message");
+    }
+  };
+
+  const giftPoints = async (fromUserId: string, toUserId: string, amount: number, message?: string) => {
+    try {
+      if (!currentUser) {
+        toast.error("You must be logged in to gift points");
+        return;
+      }
+
+      if (amount <= 0) {
+        toast.error("Gift amount must be greater than zero");
+        return;
+      }
+
+      // Check if user has enough points
+      if (currentUser.points < amount) {
+        toast.error("You don't have enough points to gift");
+        return;
+      }
+
+      // Deduct points from current user
+      await updateUserPoints(fromUserId, -amount);
+      
+      // Add points to recipient
+      await updateUserPoints(toUserId, amount);
+      
+      // Create transaction records
+      const newSentTransaction: PointTransaction = {
+        id: `trans${Date.now()}-sent`,
+        userId: fromUserId,
+        amount: -amount,
+        type: "spent",
+        description: `Gifted points to ${toUserId}${message ? `: "${message}"` : ''}`,
+        createdAt: new Date().toISOString(),
+      };
+      
+      const newReceivedTransaction: PointTransaction = {
+        id: `trans${Date.now()}-received`,
+        userId: toUserId,
+        amount: amount,
+        type: "earned",
+        description: `Received gift from ${fromUserId}${message ? `: "${message}"` : ''}`,
+        createdAt: new Date().toISOString(),
+      };
+      
+      setTransactions(prev => [...prev, newSentTransaction, newReceivedTransaction]);
+      
+      toast.success(`Successfully gifted ${amount} points`);
+    } catch (error) {
+      console.error("Gift points error:", error);
+      toast.error("Failed to gift points");
+    }
+  };
+
   const getUserTransactions = (userId: string): PointTransaction[] => {
     return transactions.filter(t => t.userId === userId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -406,6 +547,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         rewards,
         requests,
         transactions,
+        customRequests,
         addTask,
         updateTask,
         deleteTask,
@@ -416,6 +558,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         reviewPointRequest,
         redeemReward,
         getUserTransactions,
+        createCustomRequest,
+        reviewCustomRequest,
+        sendMessage,
+        giftPoints,
       }}
     >
       {children}

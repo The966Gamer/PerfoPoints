@@ -54,3 +54,25 @@ export interface PointTransaction {
   relatedRewardId?: string;
   createdAt: string;
 }
+
+export interface CustomRequest {
+  id: string;
+  userId: string;
+  username: string;
+  title: string;
+  description: string;
+  type: 'reward' | 'task' | 'other';
+  status: 'pending' | 'approved' | 'denied';
+  createdAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+export interface Message {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  content: string;
+  read: boolean;
+  createdAt: string;
+}

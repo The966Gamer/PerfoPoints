@@ -1,120 +1,195 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
-import { Check, X, Clock } from "lucide-react";
-import { format } from "date-fns";
-import { PointRequest } from "@/types";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatDistanceToNow } from "date-fns";
+import { CheckCircle, XCircle } from "lucide-react";
 
-interface RequestListProps {
-  limit?: number;
-}
+const RequestList = () => {
+  const { requests, reviewPointRequest, customRequests, reviewCustomRequest } = useData();
+  const [processing, setProcessing] = useState<string | null>(null);
 
-const RequestList = ({ limit }: RequestListProps) => {
-  const { requests, reviewPointRequest } = useData();
-  const [processing, setProcessing] = useState<Record<string, boolean>>({});
-  
-  // Sort requests by status (pending first) and then by date (newest first)
-  const sortedRequests = [...requests]
-    .sort((a, b) => {
-      // Sort by status (pending first)
-      if (a.status === "pending" && b.status !== "pending") return -1;
-      if (a.status !== "pending" && b.status === "pending") return 1;
-      
-      // Then sort by date (newest first)
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  
-  const displayRequests = limit ? sortedRequests.slice(0, limit) : sortedRequests;
-  
-  const handleReview = async (requestId: string, approved: boolean) => {
-    setProcessing(prev => ({ ...prev, [requestId]: true }));
+  const handleApproveRequest = async (requestId: string) => {
     try {
-      await reviewPointRequest(requestId, approved);
+      setProcessing(requestId);
+      await reviewPointRequest(requestId, true);
     } finally {
-      setProcessing(prev => ({ ...prev, [requestId]: false }));
+      setProcessing(null);
     }
   };
-  
-  const getStatusBadgeClass = (status: PointRequest['status']) => {
-    switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "approved": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "denied": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default: return "";
+
+  const handleDenyRequest = async (requestId: string) => {
+    try {
+      setProcessing(requestId);
+      await reviewPointRequest(requestId, false);
+    } finally {
+      setProcessing(null);
     }
   };
-  
+
+  const handleApproveCustomRequest = async (requestId: string) => {
+    try {
+      setProcessing(requestId);
+      await reviewCustomRequest(requestId, true);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleDenyCustomRequest = async (requestId: string) => {
+    try {
+      setProcessing(requestId);
+      await reviewCustomRequest(requestId, false);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const pendingRequests = requests.filter(
+    (request) => request.status === "pending"
+  );
+  const pendingCustomRequests = customRequests.filter(
+    (request) => request.status === "pending"
+  );
+
   return (
-    <div className="overflow-x-auto">
-      {displayRequests.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No point requests to display
-        </div>
-      ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="py-3 px-4 font-medium">User</th>
-              <th className="py-3 px-4 font-medium">Task</th>
-              <th className="py-3 px-4 font-medium">Points</th>
-              <th className="py-3 px-4 font-medium">Status</th>
-              <th className="py-3 px-4 font-medium">Date</th>
-              <th className="py-3 px-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayRequests.map((request) => (
-              <tr key={request.id} className="border-b hover:bg-muted/50 transition-colors">
-                <td className="py-3 px-4">{request.username}</td>
-                <td className="py-3 px-4">{request.taskTitle}</td>
-                <td className="py-3 px-4 font-medium">{request.pointValue}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(request.status)}`}>
-                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Clock size={12} />
-                    <span>{format(new Date(request.createdAt), "MMM d, h:mm a")}</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-right">
-                  {request.status === "pending" ? (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-red-200 hover:bg-red-50 hover:text-red-700"
-                        onClick={() => handleReview(request.id, false)}
-                        disabled={processing[request.id]}
-                      >
-                        <X size={16} />
-                        <span className="sr-only md:not-sr-only md:ml-2">Deny</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-green-200 hover:bg-green-50 hover:text-green-700"
-                        onClick={() => handleReview(request.id, true)}
-                        disabled={processing[request.id]}
-                      >
-                        <Check size={16} />
-                        <span className="sr-only md:not-sr-only md:ml-2">Approve</span>
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      {request.reviewedBy ? "Reviewed" : "No action needed"}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    <div>
+      <Tabs defaultValue="points" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="points">Point Requests</TabsTrigger>
+          <TabsTrigger value="custom">Custom Requests</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="points">
+          <h2 className="text-xl font-semibold mb-4">Task Completion Requests</h2>
+          {pendingRequests.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              No pending point requests
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Task</TableHead>
+                  <TableHead className="text-right">Points</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="font-medium">{request.username}</TableCell>
+                    <TableCell>{request.taskTitle}</TableCell>
+                    <TableCell className="text-right">{request.pointValue}</TableCell>
+                    <TableCell>
+                      {formatDistanceToNow(new Date(request.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDenyRequest(request.id)}
+                          disabled={processing === request.id}
+                        >
+                          <XCircle className="text-destructive h-5 w-5" />
+                          <span className="sr-only">Deny</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleApproveRequest(request.id)}
+                          disabled={processing === request.id}
+                        >
+                          <CheckCircle className="text-green-600 h-5 w-5" />
+                          <span className="sr-only">Approve</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="custom">
+          <h2 className="text-xl font-semibold mb-4">Custom Requests</h2>
+          {pendingCustomRequests.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              No pending custom requests
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingCustomRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="font-medium">{request.username}</TableCell>
+                    <TableCell className="capitalize">{request.type}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{request.title}</div>
+                        <div className="text-sm text-muted-foreground truncate max-w-[200px]">
+                          {request.description}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {formatDistanceToNow(new Date(request.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDenyCustomRequest(request.id)}
+                          disabled={processing === request.id}
+                        >
+                          <XCircle className="text-destructive h-5 w-5" />
+                          <span className="sr-only">Deny</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleApproveCustomRequest(request.id)}
+                          disabled={processing === request.id}
+                        >
+                          <CheckCircle className="text-green-600 h-5 w-5" />
+                          <span className="sr-only">Approve</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
