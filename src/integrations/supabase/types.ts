@@ -83,6 +83,50 @@ export type Database = {
           },
         ]
       }
+      point_requests: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          photo_url: string | null
+          reviewed_by: string | null
+          status: string
+          task_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          photo_url?: string | null
+          reviewed_by?: string | null
+          status?: string
+          task_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          photo_url?: string | null
+          reviewed_by?: string | null
+          status?: string
+          task_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "point_requests_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       points_history: {
         Row: {
           id: string
@@ -129,31 +173,37 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string | null
           email_verified: boolean
           full_name: string
           id: string
+          is_blocked: boolean | null
           points: number
           role: string
           username: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           email_verified?: boolean
           full_name: string
           id: string
+          is_blocked?: boolean | null
           points?: number
           role?: string
           username: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           email_verified?: boolean
           full_name?: string
           id?: string
+          is_blocked?: boolean | null
           points?: number
           role?: string
           username?: string

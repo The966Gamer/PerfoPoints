@@ -1,357 +1,385 @@
-
-import { User, Session } from "@supabase/supabase-js";
-import { ReactNode, createContext, useContext, useEffect, useState } from "react";
+import { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { User } from "@/types";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
-// Extend the User type with additional profile information
-export interface ExtendedUser extends Omit<User, "created_at"> {
-  username?: string;
-  role: "admin" | "user";
-  points: number;
-  email_verified: boolean;
-  created_at?: string; // Make it optional to match the override
-  isBlocked?: boolean; // Add isBlocked property for user management
-  avatar_url?: string; // Add avatar URL for profile images
+// Extended User interface to include Supabase Auth properties
+interface ExtendedUser extends User {
+  app_metadata: any;
+  user_metadata: any;
+  aud: string;
 }
 
 // Context type definition
 interface AuthContextType {
-  currentUser: ExtendedUser | null;
-  users: ExtendedUser[];
-  session: Session | null;
+  currentUser: User | null;
+  session: any;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (email: string, password: string, metadata: Record<string, any>) => Promise<void>;
-  updateProfile: (data: Partial<ExtendedUser>) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string, fullName: string) => Promise<void>;
+  signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  updateUser: (userId: string, data: Partial<ExtendedUser>) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
+  updateAvatar: (file: File) => Promise<string>;
+  getAllUsers: () => Promise<User[]>;
   blockUser: (userId: string, isBlocked: boolean) => Promise<void>;
 }
 
-// Create auth context
+// Create context with default values
 const AuthContext = createContext<AuthContextType>({
   currentUser: null,
-  users: [],
   session: null,
   loading: true,
-  login: async () => {},
-  logout: async () => {},
-  register: async () => {},
-  updateProfile: async () => {},
+  signIn: async () => {},
+  signUp: async () => {},
+  signOut: async () => {},
   resetPassword: async () => {},
-  updateUser: async () => {},
+  updateProfile: async () => {},
+  updateAvatar: async () => "",
+  getAllUsers: async () => [],
   blockUser: async () => {},
 });
 
 // Auth Provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [currentUser, setCurrentUser] = useState<ExtendedUser | null>(null);
-  const [users, setUsers] = useState<ExtendedUser[]>([]);
-  const [session, setSession] = useState<Session | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  // Fetch current session and user profile on initial load
+  // Initialize user session on mount
   useEffect(() => {
-    const loadUserSession = async () => {
+    const initSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
         setSession(session);
-
-        if (session?.user) {
-          const { data: profile, error } = await supabase
+        
+        if (session) {
+          // Get user profile data
+          const { data: profile, error: profileError } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", session.user.id)
             .single();
           
-          if (error) throw error;
-
-          // Merge auth user data with profile data
-          const extendedUser: ExtendedUser = {
-            ...session.user,
-            username: profile.username || "",
-            role: profile.role as "admin" | "user",
-            points: profile.points || 0,
-            email_verified: profile.email_verified,
+          if (profileError) throw profileError;
+          
+          // Transform profile data to match User interface
+          const userData: User = {
+            id: profile.id,
+            username: profile.username,
+            role: profile.role,
+            points: profile.points,
             isBlocked: profile.is_blocked || false,
-            avatar_url: profile.avatar_url
+            avatarUrl: profile.avatar_url,
+            createdAt: profile.created_at,
           };
           
-          setCurrentUser(extendedUser);
+          setCurrentUser(userData);
         }
-      } catch (error) {
-        console.error("Error loading user session:", error);
+      } catch (error: any) {
+        console.error("Error fetching session:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadUserSession();
-
-    // Listen for auth state changes
+    // Setup auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state changed:", event);
         setSession(session);
-
-        if (session?.user) {
-          const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          if (error) {
-            console.error("Error fetching profile:", error);
-            return;
+        
+        if (session) {
+          try {
+            // Get user profile data
+            const { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", session.user.id)
+              .single();
+            
+            if (profileError) throw profileError;
+            
+            // Transform profile data to match User interface
+            const userData: User = {
+              id: profile.id,
+              username: profile.username,
+              role: profile.role,
+              points: profile.points,
+              isBlocked: profile.is_blocked || false,
+              avatarUrl: profile.avatar_url,
+              createdAt: profile.created_at,
+            };
+            
+            setCurrentUser(userData);
+          } catch (error: any) {
+            console.error("Error fetching user profile:", error);
           }
-
-          // Merge auth user data with profile data
-          const extendedUser: ExtendedUser = {
-            ...session.user,
-            username: profile.username || "",
-            role: profile.role as "admin" | "user",
-            points: profile.points || 0,
-            email_verified: profile.email_verified,
-            isBlocked: profile.is_blocked || false,
-            avatar_url: profile.avatar_url
-          };
-          
-          setCurrentUser(extendedUser);
         } else {
           setCurrentUser(null);
         }
       }
     );
 
-    // Fetch all users if current user is admin
-    const fetchUsers = async () => {
-      if (currentUser?.role === "admin") {
-        const { data, error } = await supabase.from("profiles").select("*");
-        
-        if (error) {
-          console.error("Error fetching users:", error);
-          return;
-        }
-        
-        setUsers(data as ExtendedUser[]);
-      }
-    };
-
-    if (currentUser?.role === "admin") {
-      fetchUsers();
-    }
-
+    initSession();
+    
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser?.role]);
+  }, []);
+
+  // Get all users (admin only)
+  const getAllUsers = async (): Promise<User[]> => {
+    try {
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Unauthorized");
+      }
+      
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("username");
+      
+      if (error) throw error;
+      
+      // Transform profile data to match User interface
+      const usersData: User[] = data.map(profile => ({
+        id: profile.id,
+        username: profile.username,
+        role: profile.role,
+        points: profile.points,
+        isBlocked: profile.is_blocked || false,
+        avatarUrl: profile.avatar_url,
+        createdAt: profile.created_at,
+      }));
+      
+      return usersData;
+    } catch (error: any) {
+      console.error("Error getting users:", error);
+      throw error;
+    }
+  };
+
+  // Block/unblock user (admin only)
+  const blockUser = async (userId: string, isBlocked: boolean): Promise<void> => {
+    try {
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Unauthorized");
+      }
+      
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_blocked: isBlocked })
+        .eq("id", userId);
+      
+      if (error) throw error;
+      
+      toast.success(`User ${isBlocked ? "blocked" : "unblocked"} successfully`);
+    } catch (error: any) {
+      toast.error(`Failed to ${isBlocked ? "block" : "unblock"} user: ${error.message}`);
+      throw error;
+    }
+  };
 
   // Login function
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-
-      if (error) throw error;
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      
+      if (error) {
+        toast.error(error.message);
+        throw error;
+      }
+      
+      if (data?.session) {
+        // Check if user is blocked
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("is_blocked")
+          .eq("id", data.session.user.id)
+          .single();
+          
+        if (profileError) throw profileError;
+        
+        if (profile.is_blocked) {
+          await supabase.auth.signOut();
+          toast.error("Your account has been blocked. Please contact an administrator.");
+          throw new Error("Account blocked");
+        }
+        
+        toast.success("Signed in successfully");
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Sign in error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Logout function
   const logout = async () => {
     try {
+      setLoading(true);
+      
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      
+      if (error) {
+        toast.error(error.message);
+        throw error;
+      }
+      
+      queryClient.clear();
+      navigate("/auth");
+      toast.success("Signed out successfully");
+    } catch (error) {
+      console.error("Sign out error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Register function
-  const register = async (email: string, password: string, metadata: Record<string, any>) => {
+  const register = async (email: string, password: string, username: string, fullName: string) => {
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: metadata,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            username,
+            fullName,
+          },
         },
       });
-
-      if (error) throw error;
       
-      toast({
-        title: "Registration successful",
-        description: "Please check your email to verify your account",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Registration failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error) {
+        toast.error(error.message);
+        throw error;
+      }
+      
+      if (data) {
+        toast.success("Account created successfully! You can now sign in.");
+      }
+    } catch (error) {
+      console.error("Sign up error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Update user profile
-  const updateProfile = async (data: Partial<ExtendedUser>) => {
+  const updateProfile = async (data: Partial<User>): Promise<void> => {
     try {
-      if (!currentUser) throw new Error("No user is logged in");
-
+      if (!currentUser) {
+        throw new Error("Not authenticated");
+      }
+      
+      // Transform data to match the profiles table schema
+      const profileData = {
+        username: data.username,
+        role: data.role,
+        points: data.points,
+      };
+      
       const { error } = await supabase
         .from("profiles")
-        .update(data)
+        .update(profileData)
         .eq("id", currentUser.id);
-
+      
       if (error) throw error;
-
+      
       // Update local state
-      setCurrentUser(prev => prev ? { ...prev, ...data } : null);
-      
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  // Reset password
-  const resetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Password reset email sent",
-        description: "Please check your email for the reset link",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Password reset failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  // Admin function to update user data
-  const updateUser = async (userId: string, data: Partial<ExtendedUser>) => {
-    try {
-      if (currentUser?.role !== "admin") {
-        throw new Error("Unauthorized");
+      if (currentUser) {
+        setCurrentUser({
+          ...currentUser,
+          ...data,
+        });
       }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update(data)
-        .eq("id", userId);
-
-      if (error) throw error;
-
-      // Update users list
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, ...data } : user
-        )
-      );
       
-      toast({
-        title: "User updated",
-        description: "User has been updated successfully",
-      });
+      toast.success("Profile updated successfully");
     } catch (error: any) {
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(`Failed to update profile: ${error.message}`);
       throw error;
     }
   };
 
-  // Admin function to block/unblock user
-  const blockUser = async (userId: string, isBlocked: boolean) => {
+  // Upload and update user avatar
+  const updateAvatar = async (file: File): Promise<string> => {
     try {
-      if (currentUser?.role !== "admin") {
-        throw new Error("Unauthorized");
+      if (!currentUser) {
+        throw new Error("Not authenticated");
       }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_blocked: isBlocked })
-        .eq("id", userId);
-
-      if (error) throw error;
-
-      // Update users list
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, isBlocked } : user
-        )
-      );
       
-      toast({
-        title: `User ${isBlocked ? 'blocked' : 'unblocked'}`,
-        description: `User has been ${isBlocked ? 'blocked' : 'unblocked'} successfully`,
+      // Define file path
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}.${fileExt}`;
+      const filePath = fileName;
+      
+      // Upload avatar image
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+      
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL
+      const { data } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+      
+      const avatarUrl = data.publicUrl;
+      
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", currentUser.id);
+      
+      if (updateError) throw updateError;
+      
+      // Update local state
+      setCurrentUser({
+        ...currentUser,
+        avatarUrl,
       });
+      
+      toast.success("Avatar updated successfully");
+      
+      return avatarUrl;
     } catch (error: any) {
-      toast({
-        title: "Action failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(`Failed to update avatar: ${error.message}`);
       throw error;
     }
   };
 
   const value = {
     currentUser,
-    users,
     session,
     loading,
-    login,
-    logout,
-    register,
-    updateProfile,
+    signIn,
+    signUp,
+    signOut,
     resetPassword,
-    updateUser,
+    updateProfile,
+    updateAvatar,
+    getAllUsers,
     blockUser,
   };
 

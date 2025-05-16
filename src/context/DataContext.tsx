@@ -1,4 +1,3 @@
-
 import { ReactNode, createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
@@ -70,44 +69,68 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         const { data: tasksData, error: tasksError } = await supabase
           .from("tasks")
           .select("*")
-          .order("createdAt", { ascending: false });
+          .order("created_at", { ascending: false });
         
         if (tasksError) throw tasksError;
-        setTasks(tasksData || []);
+        
+        // Map database fields to our Task type
+        const mappedTasks: Task[] = (tasksData || []).map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description || "",
+          pointValue: task.points_value,
+          autoReset: task.recurring || false,
+          createdAt: task.created_at,
+          createdBy: task.created_by || "",
+        }));
+        
+        setTasks(mappedTasks);
         
         // Fetch rewards
         const { data: rewardsData, error: rewardsError } = await supabase
           .from("rewards")
           .select("*")
-          .order("pointCost", { ascending: true });
+          .order("points_cost", { ascending: true });
         
         if (rewardsError) throw rewardsError;
-        setRewards(rewardsData || []);
+        
+        // Map database fields to our Reward type
+        const mappedRewards: Reward[] = (rewardsData || []).map(reward => ({
+          id: reward.id,
+          title: reward.title,
+          description: reward.description || "",
+          pointCost: reward.points_cost,
+          approvalKeyRequired: reward.requires_approval,
+          createdAt: new Date().toISOString(), // Since we don't have this field in the DB
+          createdBy: currentUser?.id || "", 
+        }));
+        
+        setRewards(mappedRewards);
         
         // Fetch point requests
         const { data: requestsData, error: requestsError } = await supabase
           .from("point_requests")
           .select(`
             *,
-            tasks:taskId(title, pointValue),
-            profiles:userId(username)
+            tasks:task_id(title, points_value),
+            profiles:user_id(username)
           `)
-          .order("createdAt", { ascending: false });
+          .order("created_at", { ascending: false });
         
         if (requestsError) throw requestsError;
         
         const formattedRequests = requestsData?.map(req => ({
           id: req.id,
-          userId: req.userId,
-          taskId: req.taskId,
+          userId: req.user_id,
+          taskId: req.task_id,
           status: req.status,
-          createdAt: req.createdAt,
-          updatedAt: req.updatedAt,
-          reviewedBy: req.reviewedBy,
+          createdAt: req.created_at,
+          updatedAt: req.updated_at || undefined,
+          reviewedBy: req.reviewed_by || undefined,
           taskTitle: req.tasks?.title || "Unknown Task",
-          pointValue: req.tasks?.pointValue || 0,
+          pointValue: req.tasks?.points_value || 0,
           username: req.profiles?.username || "Unknown User",
-          photoUrl: req.photoUrl || null,
+          photoUrl: req.photo_url || null,
           comment: req.comment || null
         })) || [];
         
@@ -129,8 +152,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
           userId: req.user_id,
           title: req.title,
           description: req.description,
-          type: req.type,
-          status: req.status,
+          type: req.type as "task" | "reward" | "other",
+          status: req.status as "pending" | "approved" | "rejected",
           createdAt: req.created_at,
           updatedAt: req.updated_at,
           reviewedBy: req.reviewed_by,
@@ -421,9 +444,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase
         .from("point_requests")
         .insert({
-          userId: currentUser.id,
-          taskId: taskId,
-          photoUrl: photoUrl || null,
+          user_id: currentUser.id,
+          task_id: taskId,
+          photo_url: photoUrl || null,
           comment: comment || null
         });
       
@@ -453,7 +476,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       // Get request details
       const { data: request, error: requestError } = await supabase
         .from("point_requests")
-        .select("*, tasks:taskId(pointValue)")
+        .select("*, tasks:task_id(points_value)")
         .eq("id", requestId)
         .single();
       
@@ -465,8 +488,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         .from("point_requests")
         .update({
           status: approved ? "approved" : "rejected",
-          reviewedBy: currentUser.id,
-          updatedAt: new Date().toISOString()
+          reviewed_by: currentUser.id,
+          updated_at: new Date().toISOString()
         })
         .eq("id", requestId);
       
@@ -477,17 +500,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         const { data: userData, error: userError } = await supabase
           .from("profiles")
           .select("points")
-          .eq("id", request.userId)
+          .eq("id", request.user_id)
           .single();
         
         if (userError) throw userError;
         
-        const newPoints = (userData?.points || 0) + request.tasks.pointValue;
+        const newPoints = (userData?.points || 0) + request.tasks.points_value;
         
         const { error: pointsError } = await supabase
           .from("profiles")
           .update({ points: newPoints })
-          .eq("id", request.userId);
+          .eq("id", request.user_id);
         
         if (pointsError) throw pointsError;
       }
