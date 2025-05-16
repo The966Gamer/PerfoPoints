@@ -1,149 +1,101 @@
-
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { PageLayout } from "@/components/layout/PageLayout";
-import { ArrowLeft } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("login");
   const { login, register } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) return;
-
-    setLoading(true);
-    const success = await login(username, password);
-    setLoading(false);
     
-    if (success) {
-      navigate("/dashboard");
+    if (isRegistering) {
+      // Fix: Pass metadata as an object (Record<string, any>)
+      const metadata = { username };
+      await register(email, password, metadata);
+    } else {
+      await login(email, password);
     }
   };
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username || !password) return;
-
-    setLoading(true);
-    // Determine if this is an admin signup (Mom or Dad only)
-    const role = username === "Mom" || username === "Dad" ? "admin" : "user";
-    const success = await register(username, password, role);
-    setLoading(false);
-    
-    if (success) {
-      setActiveTab("login");
-      toast.success("Account created! Please login.");
-    }
-  };
-
+  
   return (
-    <PageLayout>
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Perfo Points</CardTitle>
-            <CardDescription className="text-center">
-              The family reward tracking system
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      placeholder="Enter your username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Logging in..." : "Login"}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="signup-username"
-                      placeholder="Choose a username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Note: Only "Mom" and "Dad" usernames can be administrators
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Choose a password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Creating Account..." : "Sign Up"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          <CardFooter className="flex justify-center">
-            <div className="text-sm text-center">
-              <p className="text-muted-foreground">
-                For email-based authentication and custom task/reward requests, 
-                please connect to Supabase using the Supabase button in the top right.
-              </p>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded shadow-md w-96">
+        <h2 className="text-2xl font-semibold mb-4">
+          {isRegistering ? "Register" : "Login"}
+        </h2>
+        <form onSubmit={handleSubmit}>
+          {isRegistering && (
+            <div className="mb-4">
+              <label
+                htmlFor="username"
+                className="block text-gray-700 text-sm font-bold mb-2"
+              >
+                Username
+              </label>
+              <input
+                type="text"
+                id="username"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
             </div>
-          </CardFooter>
-        </Card>
+          )}
+          <div className="mb-4">
+            <label
+              htmlFor="email"
+              className="block text-gray-700 text-sm font-bold mb-2"
+            >
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="mb-6">
+            <label
+              htmlFor="password"
+              className="block text-gray-700 text-sm font-bold mb-2"
+            >
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              type="submit"
+            >
+              {isRegistering ? "Register" : "Login"}
+            </button>
+            <button
+              type="button"
+              className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800"
+              onClick={() => setIsRegistering(!isRegistering)}
+            >
+              {isRegistering ? "Already have an account? Login" : "Need an account? Register"}
+            </button>
+          </div>
+        </form>
       </div>
-    </PageLayout>
+    </div>
   );
 };
 

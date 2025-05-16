@@ -280,7 +280,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newRequest: PointRequest = {
         id: `request${Date.now()}`,
         userId: currentUser.id,
-        username: currentUser.username,
+        username: currentUser.username || 'Unknown User',
         taskId: task.id,
         taskTitle: task.title,
         pointValue: task.pointValue,
@@ -366,7 +366,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      if (currentUser.points < reward.pointCost) {
+      if (currentUser.points && currentUser.points < reward.pointCost) {
         toast.error("You don't have enough points for this reward");
         return;
       }
