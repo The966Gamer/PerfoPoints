@@ -5,175 +5,95 @@ import { useAuth } from "@/context/AuthContext";
 
 const Index = () => {
   const { currentUser } = useAuth();
-  
+
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary rounded-lg p-1">
-              <div className="text-primary-foreground font-bold">PP</div>
-            </div>
-            <span className="font-bold text-xl">Perfo Points</span>
+      <header className="py-6 px-4 sm:px-6 lg:px-8 border-b">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-bold">PerfoPoints</h1>
+          <div>
+            {currentUser ? (
+              <Button asChild>
+                <Link to="/dashboard">Go to Dashboard</Link>
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link to="/auth">Login / Register</Link>
+              </Button>
+            )}
           </div>
-          
-          {currentUser ? (
-            <Link to="/dashboard">
-              <Button>
-                Go to Dashboard
-              </Button>
-            </Link>
-          ) : (
-            <Link to="/login">
-              <Button>
-                Log In
-              </Button>
-            </Link>
-          )}
         </div>
       </header>
-      
+
       <main className="flex-grow">
-        <section className="py-20 px-4">
-          <div className="container max-w-5xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
-              Make chores fun with Perfo Points!
+        <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-muted/30">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-4xl font-extrabold sm:text-5xl">
+              The Family Reward System
             </h1>
-            <p className="text-xl max-w-2xl mx-auto mb-10 text-muted-foreground">
-              A family reward system that makes it easy to track tasks, earn points, and redeem rewards.
+            <p className="mt-6 text-xl text-muted-foreground">
+              A simple, fair, and fun way to track chores, rewards, and points for the entire family.
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="mt-10">
               {currentUser ? (
-                <Link to="/dashboard">
-                  <Button size="lg" className="px-8">
-                    Go to Your Dashboard
-                  </Button>
-                </Link>
+                <Button asChild size="lg">
+                  <Link to="/dashboard">My Dashboard</Link>
+                </Button>
               ) : (
-                <Link to="/login">
-                  <Button size="lg" className="px-8">
-                    Get Started
-                  </Button>
-                </Link>
+                <Button asChild size="lg">
+                  <Link to="/auth">Get Started</Link>
+                </Button>
               )}
             </div>
           </div>
         </section>
-        
-        <section className="py-16 bg-muted/50">
-          <div className="container max-w-6xl mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-background p-6 rounded-xl shadow-sm text-center">
-                <div className="rounded-full bg-primary/10 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-primary">1</span>
+
+        <section className="py-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid gap-8 md:grid-cols-3">
+              <div className="text-center p-6">
+                <div className="mx-auto bg-primary/10 w-12 h-12 mb-4 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <path d="M12 22L3 17V7l9-5l9 5v10l-9 5Z"></path><path d="m12 22 9-5"></path><path d="m12 17-9-5"></path><path d="M12 7v10"></path><path d="m12 7 9-5"></path><path d="M9 4.8 3 7"></path>
+                  </svg>
                 </div>
-                <h3 className="text-xl font-medium mb-2">Complete Tasks</h3>
-                <p className="text-muted-foreground">
-                  Children complete assigned tasks and chores from their task list.
+                <h3 className="text-xl font-medium">Track Tasks</h3>
+                <p className="mt-2 text-muted-foreground">
+                  Easily manage chores and responsibilities for all family members.
                 </p>
               </div>
-              
-              <div className="bg-background p-6 rounded-xl shadow-sm text-center">
-                <div className="rounded-full bg-primary/10 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-primary">2</span>
+              <div className="text-center p-6">
+                <div className="mx-auto bg-primary/10 w-12 h-12 mb-4 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <circle cx="12" cy="12" r="8"></circle><path d="M12 8v8"></path><path d="M8 12h8"></path>
+                  </svg>
                 </div>
-                <h3 className="text-xl font-medium mb-2">Earn Points</h3>
-                <p className="text-muted-foreground">
-                  Parents approve completed tasks and children earn points for their work.
+                <h3 className="text-xl font-medium">Earn Points</h3>
+                <p className="mt-2 text-muted-foreground">
+                  Complete tasks to earn points that can be redeemed for rewards.
                 </p>
               </div>
-              
-              <div className="bg-background p-6 rounded-xl shadow-sm text-center">
-                <div className="rounded-full bg-primary/10 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-primary">3</span>
+              <div className="text-center p-6">
+                <div className="mx-auto bg-primary/10 w-12 h-12 mb-4 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line>
+                  </svg>
                 </div>
-                <h3 className="text-xl font-medium mb-2">Redeem Rewards</h3>
-                <p className="text-muted-foreground">
-                  Children spend their points on rewards created by parents.
+                <h3 className="text-xl font-medium">Get Rewards</h3>
+                <p className="mt-2 text-muted-foreground">
+                  Redeem points for customized rewards chosen by parents.
                 </p>
               </div>
-            </div>
-          </div>
-        </section>
-        
-        <section className="py-16 px-4">
-          <div className="container max-w-5xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-8">Perfect for Families</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto text-left">
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-accent flex-shrink-0 p-1">
-                  <svg className="w-5 h-5 text-accent-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium">Teaches Responsibility</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Children learn responsibility by completing assigned tasks.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-accent flex-shrink-0 p-1">
-                  <svg className="w-5 h-5 text-accent-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium">Builds Work Ethic</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Kids learn the connection between work and rewards.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-accent flex-shrink-0 p-1">
-                  <svg className="w-5 h-5 text-accent-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium">Encourages Saving</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Children learn to save points for bigger rewards.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-accent flex-shrink-0 p-1">
-                  <svg className="w-5 h-5 text-accent-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium">Makes Chores Fun</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gamified system makes mundane tasks engaging.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-12">
-              <Link to="/login">
-                <Button size="lg" className="px-8">
-                  Try It For Free
-                </Button>
-              </Link>
             </div>
           </div>
         </section>
       </main>
-      
-      <footer className="border-t py-8">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Perfo Points. All rights reserved.</p>
+
+      <footer className="py-6 px-4 sm:px-6 lg:px-8 border-t">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-center text-sm text-muted-foreground">
+            © {new Date().getFullYear()} PerfoPoints. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>

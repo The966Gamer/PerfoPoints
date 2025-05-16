@@ -1,49 +1,51 @@
 
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { DataProvider } from "./context/DataContext";
+import { Toaster as SonnerToaster } from "sonner";
 
-// Pages
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import TasksPage from "./pages/TasksPage";
-import RewardsPage from "./pages/RewardsPage";
-import ProfilePage from "./pages/ProfilePage";
-import RequestsPage from "./pages/RequestsPage";
-import UsersPage from "./pages/UsersPage";
-import NotFound from "./pages/NotFound";
+import { AuthProvider } from "@/context/AuthContext";
+import { DataProvider } from "@/context/DataContext";
 
-const queryClient = new QueryClient();
+import Index from "@/pages/Index";
+import Dashboard from "@/pages/Dashboard";
+import ProfilePage from "@/pages/ProfilePage";
+import TasksPage from "@/pages/TasksPage";
+import RewardsPage from "@/pages/RewardsPage";
+import UsersPage from "@/pages/UsersPage";
+import RequestsPage from "@/pages/RequestsPage";
+import NotFound from "@/pages/NotFound";
+import Auth from "@/pages/Auth";
+import AuthCallback from "@/pages/AuthCallback";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+import "@/App.css";
+
+function App() {
+  return (
+    <ThemeProvider defaultTheme="light" storageKey="perfopoints-theme">
       <AuthProvider>
         <DataProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+          <Router>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/tasks" element={<TasksPage />} />
               <Route path="/rewards" element={<RewardsPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/requests" element={<RequestsPage />} />
               <Route path="/users" element={<UsersPage />} />
+              <Route path="/requests" element={<RequestsPage />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </Router>
+          <Toaster />
+          <SonnerToaster position="bottom-right" />
         </DataProvider>
       </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </ThemeProvider>
+  );
+}
 
 export default App;

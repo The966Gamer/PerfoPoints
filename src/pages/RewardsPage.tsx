@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -14,6 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, Plus, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
+
+// Define request type explicitly to fix type error
+type RequestType = 'reward' | 'task' | 'other';
 
 const RewardsPage = () => {
   const { currentUser } = useAuth();
@@ -31,7 +33,7 @@ const RewardsPage = () => {
   // Form state for requesting new rewards/items
   const [requestTitle, setRequestTitle] = useState("");
   const [requestDescription, setRequestDescription] = useState("");
-  const [requestType, setRequestType] = useState("reward");
+  const [requestType, setRequestType] = useState<RequestType>("reward");
   
   const isAdmin = currentUser?.role === "admin";
   
