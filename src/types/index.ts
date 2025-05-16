@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -31,41 +30,34 @@ export interface Reward {
   createdBy: string;
 }
 
+// Point Request type
 export interface PointRequest {
   id: string;
   userId: string;
-  username: string;
   taskId: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  updatedAt?: string;
+  reviewedBy?: string;
   taskTitle: string;
   pointValue: number;
-  status: 'pending' | 'approved' | 'denied';
-  createdAt: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
+  username: string;
+  photoUrl?: string | null;
+  comment?: string | null;
 }
 
-export interface PointTransaction {
-  id: string;
-  userId: string;
-  amount: number;
-  type: 'earned' | 'spent';
-  description: string;
-  relatedTaskId?: string;
-  relatedRewardId?: string;
-  createdAt: string;
-}
-
+// Custom Request type
 export interface CustomRequest {
   id: string;
   userId: string;
-  username: string;
   title: string;
-  description: string;
-  type: 'reward' | 'task' | 'other';
-  status: 'pending' | 'approved' | 'denied';
+  description?: string;
+  type: "task" | "reward" | "other";
+  status: "pending" | "approved" | "rejected";
   createdAt: string;
+  updatedAt?: string;
   reviewedBy?: string;
-  reviewedAt?: string;
+  username: string;
 }
 
 export interface Message {

@@ -1,142 +1,200 @@
 
 import { useState } from "react";
-import { PageLayout } from "@/components/layout/PageLayout";
 import { useAuth } from "@/context/AuthContext";
-import { useData } from "@/context/DataContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Upload, User } from "lucide-react";
 
 const ProfilePage = () => {
-  const { currentUser, logout } = useAuth();
-  const { getUserTransactions } = useData();
+  const { currentUser, updateProfile } = useAuth();
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const [username, setUsername] = useState(currentUser?.username || "");
   
-  if (!currentUser) return null;
+  if (!currentUser) {
+    return <PageLayout requireAuth>Loading profile...</PageLayout>;
+  }
   
-  const userTransactions = getUserTransactions(currentUser.id);
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateProfile({ username });
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
+  };
   
-  // Calculate stats
-  const earnedPoints = userTransactions
-    .filter(t => t.type === "earned")
-    .reduce((sum, t) => sum + t.amount, 0);
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     
-  const spentPoints = Math.abs(
-    userTransactions
-      .filter(t => t.type === "spent")
-      .reduce((sum, t) => sum + t.amount, 0)
-  );
+    try {
+      setIsUploading(true);
+      
+      // Create avatars bucket if it doesn't exist
+      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('avatars');
+      if (bucketError && bucketError.message.includes('does not exist')) {
+        await supabase.storage.createBucket('avatars', { public: true });
+      }
+      
+      // Upload file to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}.${fileExt}`;
+      const { error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+        
+      if (error) throw error;
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      
+      // Update profile
+      await updateProfile({ avatar_url: urlData.publicUrl });
+      
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
   
   return (
     <PageLayout requireAuth title="My Profile">
-      <div className="space-y-8">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <Avatar className="h-24 w-24">
-                <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
-                  {currentUser.username.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold">{currentUser.username}</h2>
-                <p className="text-muted-foreground capitalize">
-                  {currentUser.role}
-                </p>
-                <p className="text-sm">
-                  Member since {format(new Date(currentUser.createdAt), "MMMM d, yyyy")}
-                </p>
-                
-                {currentUser.role === "user" && (
-                  <div className="pt-2">
-                    <div className="inline-block bg-accent px-3 py-1 rounded-full">
-                      <span className="font-bold text-lg">{currentUser.points}</span>
-                      <span className="text-sm text-muted-foreground ml-1">points</span>
-                    </div>
-                  </div>
-                )}
+          <CardHeader>
+            <CardTitle>Profile Information</CardTitle>
+            <CardDescription>View and update your personal information</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col items-center gap-4 mb-4">
+              <div className="relative">
+                <Avatar className="w-32 h-32 border-4 border-background">
+                  <AvatarImage src={currentUser.avatar_url || ''} />
+                  <AvatarFallback className="bg-primary text-4xl">
+                    <User size={48} />
+                  </AvatarFallback>
+                </Avatar>
+                <label 
+                  htmlFor="avatar-upload" 
+                  className="absolute -bottom-2 -right-2 bg-secondary text-secondary-foreground p-2 rounded-full cursor-pointer hover:bg-secondary/80 transition-colors"
+                >
+                  {isUploading ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}
+                </label>
+                <input 
+                  type="file" 
+                  id="avatar-upload" 
+                  accept="image/*" 
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                  disabled={isUploading}
+                />
               </div>
-              
-              <div className="flex-grow" />
-              
-              <Button
-                variant="outline"
-                onClick={() => logout()}
-                className="md:self-start"
-              >
-                Log out
-              </Button>
+              <div className="text-center">
+                <h3 className="text-lg font-medium">{currentUser.username || "No username set"}</h3>
+                <p className="text-sm text-muted-foreground">{currentUser.email}</p>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Role</span>
+                <span className="font-medium capitalize">{currentUser.role}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Points</span>
+                <span className="font-medium">{currentUser.points}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Email Verified</span>
+                <span className="font-medium">{currentUser.email_verified ? "Yes" : "No"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Joined</span>
+                <span className="font-medium">
+                  {currentUser.created_at ? format(new Date(currentUser.created_at), "PPP") : "Unknown"}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
         
-        {currentUser.role === "user" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Total Points Earned</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold text-primary">{earnedPoints}</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Total Points Spent</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold text-secondary">{spentPoints}</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Current Balance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold">{currentUser.points}</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-        
-        {currentUser.role === "user" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit Profile</CardTitle>
+            <CardDescription>Update your profile information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="username" className="text-sm font-medium">
+                  Username
+                </label>
+                <Input 
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                />
+              </div>
+              <Button type="submit" className="w-full">Save Changes</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Tabs defaultValue="activity" className="mt-6">
+        <TabsList>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+        <TabsContent value="activity" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
-              <CardDescription>Your point earning and spending history</CardDescription>
+              <CardTitle>Activity History</CardTitle>
+              <CardDescription>Your recent tasks and rewards</CardDescription>
             </CardHeader>
             <CardContent>
-              {userTransactions.length > 0 ? (
-                <div className="space-y-4">
-                  {userTransactions.map((transaction) => (
-                    <div 
-                      key={transaction.id} 
-                      className="flex justify-between items-center border-b pb-3"
-                    >
-                      <div>
-                        <p className="font-medium">{transaction.description}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(transaction.createdAt), "MMM d, yyyy h:mm a")}
-                        </p>
-                      </div>
-                      <div className={`font-bold ${transaction.type === 'earned' ? 'text-success' : 'text-destructive'}`}>
-                        {transaction.type === 'earned' ? '+' : ''}{transaction.amount}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10 text-muted-foreground">
-                  No transactions yet
-                </div>
-              )}
+              <p className="text-muted-foreground text-center py-4">
+                Your activity history will appear here
+              </p>
             </CardContent>
           </Card>
-        )}
-      </div>
+        </TabsContent>
+        <TabsContent value="settings" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Settings</CardTitle>
+              <CardDescription>Manage your account settings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center py-4">
+                Account settings will appear here
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </PageLayout>
   );
 };

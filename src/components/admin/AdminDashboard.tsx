@@ -18,7 +18,7 @@ export function AdminDashboard() {
     <div className="space-y-6">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Active Users</CardTitle>
           </CardHeader>
@@ -32,7 +32,7 @@ export function AdminDashboard() {
           </CardFooter>
         </Card>
         
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Available Tasks</CardTitle>
           </CardHeader>
@@ -46,7 +46,7 @@ export function AdminDashboard() {
           </CardFooter>
         </Card>
         
-        <Card>
+        <Card className="glass-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Available Rewards</CardTitle>
           </CardHeader>
@@ -60,7 +60,7 @@ export function AdminDashboard() {
           </CardFooter>
         </Card>
         
-        <Card className={pendingRequests.length > 0 ? "border-secondary" : ""}>
+        <Card className={`glass-card ${pendingRequests.length > 0 ? "border-secondary bg-gradient-to-br from-secondary/10 to-background" : ""}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
           </CardHeader>
@@ -74,6 +74,7 @@ export function AdminDashboard() {
               variant={pendingRequests.length > 0 ? "secondary" : "ghost"} 
               size="sm" 
               onClick={() => navigate("/requests")}
+              className={pendingRequests.length > 0 ? "animate-pulse-scale" : ""}
             >
               Review Requests
             </Button>
@@ -82,7 +83,7 @@ export function AdminDashboard() {
       </div>
       
       {/* Recent Activity Section */}
-      <Card className="col-span-full">
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle>Recent Point Requests</CardTitle>
           <CardDescription>Approve or deny point requests from users</CardDescription>

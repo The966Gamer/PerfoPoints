@@ -116,3 +116,59 @@
     @apply container mx-auto px-4 py-6 max-w-6xl;
   }
 }
+
+/* Add animation keyframes for subtle interactions */
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-pulse-scale {
+  animation: pulse-scale 2s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+/* Login page enhancements */
+.auth-container {
+  @apply min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/10 dark:from-primary/10 dark:to-background p-4;
+}
+
+.auth-card {
+  @apply glass-card w-full max-w-md mx-auto overflow-hidden;
+}
+
+.auth-header {
+  @apply p-6 pb-4 border-b border-border/30;
+}
+
+.auth-form {
+  @apply p-6 space-y-4;
+}
+
+.auth-input {
+  @apply bg-white/70 dark:bg-gray-800/70 border-white/20 dark:border-gray-700/50;
+}
+
+.auth-button {
+  @apply w-full bg-primary hover:bg-primary/90 text-primary-foreground;
+}
+
+.auth-link {
+  @apply text-primary hover:text-primary/80 text-sm font-medium transition-colors;
+}
