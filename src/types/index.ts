@@ -7,6 +7,8 @@ export interface User {
   avatarUrl?: string;
   isBlocked?: boolean;
   createdAt: string;
+  email?: string;
+  emailVerified?: boolean;
 }
 
 export interface Task {

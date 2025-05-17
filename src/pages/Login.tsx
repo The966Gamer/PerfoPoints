@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeClosed } from "lucide-react";
 
 const Login = () => {
-  const { login, register } = useAuth();
+  const { signIn, signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,11 +23,9 @@ const Login = () => {
     
     try {
       if (isRegistering) {
-        // Fix: Pass metadata as an object (Record<string, any>)
-        const metadata = { username };
-        await register(email, password, metadata);
+        await signUp(email, password, username, username);
       } else {
-        await login(email, password);
+        await signIn(email, password);
       }
     } catch (error) {
       console.error("Authentication error:", error);
@@ -41,7 +40,7 @@ const Login = () => {
         <ThemeToggle />
       </div>
       
-      <Card className="auth-card">
+      <Card className="auth-card shadow-lg border-opacity-50 backdrop-blur-sm">
         <CardHeader className="auth-header">
           <CardTitle className="text-2xl font-bold text-center">
             {isRegistering ? "Create Account" : "Welcome Back"}
@@ -102,16 +101,28 @@ const Login = () => {
             >
               Password
             </label>
-            <Input
-              type="password"
-              id="password"
-              className="auth-input"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isSubmitting}
-            />
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                className="auth-input"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isSubmitting}
+              />
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="sm" 
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting}
+              >
+                {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+              </Button>
+            </div>
           </div>
           
           <div className="pt-2">

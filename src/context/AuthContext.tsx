@@ -11,6 +11,8 @@ interface ExtendedUser extends User {
   app_metadata: any;
   user_metadata: any;
   aud: string;
+  email?: string;
+  emailVerified?: boolean;
 }
 
 // Context type definition
@@ -79,6 +81,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isBlocked: profile.is_blocked || false,
             avatarUrl: profile.avatar_url,
             createdAt: profile.created_at,
+            email: profile.email,
+            emailVerified: profile.email_verified
           };
           
           setCurrentUser(userData);
@@ -116,6 +120,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               isBlocked: profile.is_blocked || false,
               avatarUrl: profile.avatar_url,
               createdAt: profile.created_at,
+              email: profile.email,
+              emailVerified: profile.email_verified
             };
             
             setCurrentUser(userData);
@@ -158,6 +164,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isBlocked: profile.is_blocked || false,
         avatarUrl: profile.avatar_url,
         createdAt: profile.created_at,
+        email: profile.email,
+        emailVerified: profile.email_verified
       }));
       
       return usersData;
@@ -320,6 +328,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         username: data.username,
         role: data.role,
         points: data.points,
+        avatar_url: data.avatarUrl
       };
       
       const { error } = await supabase
