@@ -6,11 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { ArrowLeft, Check, Eye, EyeClosed, Mail } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeClosed, Mail, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -22,6 +27,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [resetPasswordEmail, setResetPasswordEmail] = useState("");
   const [showResetForm, setShowResetForm] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
   
   const { signIn, signUp, currentUser, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -31,27 +37,53 @@ const Auth = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please provide both email/username and password");
-      return;
-    }
+  // Schema for signup form validation
+  const signupSchema = z.object({
+    username: z.string().min(3, { message: "Username must be at least 3 characters" }),
+    fullName: z.string().optional(),
+    email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal("")),
+    password: z.string().min(6, { message: "Password must be at least 6 characters" })
+  });
 
+  // Schema for login form validation
+  const loginSchema = z.object({
+    emailOrUsername: z.string().min(1, { message: "Email or username is required" }),
+    password: z.string().min(1, { message: "Password is required" })
+  });
+
+  const signupForm = useForm({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      username: "",
+      fullName: "",
+      email: "",
+      password: ""
+    }
+  });
+
+  const loginForm = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      emailOrUsername: "",
+      password: ""
+    }
+  });
+
+  const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setLoading(true);
     try {
       // First check if input is an email or username
-      const isEmail = email.includes('@');
+      const isEmail = values.emailOrUsername.includes('@');
       
       if (isEmail) {
         // Direct login with email
-        await signIn(email, password);
+        await signIn(values.emailOrUsername, values.password);
       } else {
         // Look up user by username
         const { data, error } = await supabase
           .from('profiles')
           .select('email')
-          .eq('username', email)
+          .eq('username', values.emailOrUsername)
           .single();
           
         if (error || !data?.email) {
@@ -61,7 +93,7 @@ const Auth = () => {
         }
         
         // Login with the found email
-        await signIn(data.email, password);
+        await signIn(data.email, values.password);
       }
       
       navigate("/dashboard");
@@ -72,18 +104,21 @@ const Auth = () => {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password || !username) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
+  const handleSignup = async (values: z.infer<typeof signupSchema>) => {
     setLoading(true);
     try {
-      await signUp(email, password, username, fullName || username);
-      toast.success("Account created! Please check your email for verification");
-      setActiveTab("login");
+      // Generate anonymous email if not provided
+      const finalEmail = values.email || `${values.username}${Math.floor(Math.random() * 100000)}@perfopointsapp.com`;
+      
+      await signUp(finalEmail, values.password, values.username, values.fullName || values.username);
+      
+      // Show verification sent message if real email
+      if (values.email) {
+        setVerificationSent(true);
+      } else {
+        toast.success("Account created! You can now sign in");
+        setActiveTab("login");
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
     } finally {
@@ -110,6 +145,25 @@ const Auth = () => {
     }
   };
 
+  const handleSendVerification = async () => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Verification email sent successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send verification email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <PageLayout>
       <div className="flex items-center mb-6">
@@ -127,7 +181,37 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {showResetForm ? (
+            {verificationSent ? (
+              <div className="space-y-4">
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Verification Email Sent!</AlertTitle>
+                  <AlertDescription>
+                    Please check your inbox and click the link to verify your email.
+                  </AlertDescription>
+                </Alert>
+                <div className="text-center mt-4">
+                  <p className="text-sm text-muted-foreground">Didn't get the email?</p>
+                  <Button 
+                    variant="link" 
+                    onClick={handleSendVerification}
+                    disabled={loading}
+                  >
+                    Send again
+                  </Button>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => {
+                    setVerificationSent(false);
+                    setActiveTab("login");
+                  }}
+                >
+                  Back to Login
+                </Button>
+              </div>
+            ) : showResetForm ? (
               <form onSubmit={handleResetPassword} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="reset-email">Email</Label>
@@ -160,113 +244,157 @@ const Auth = () => {
                 </TabsList>
                 
                 <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email or Username</Label>
-                      <Input
-                        id="email"
-                        placeholder="Enter your email or username"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4 mt-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="emailOrUsername"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email or Username</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter your email or username"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter your password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  type={showPassword ? "text" : "password"}
+                                  placeholder="Enter your password"
+                                  {...field}
+                                />
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="absolute right-0 top-0 h-full px-3"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                >
+                                  {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                                </Button>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="text-right">
                         <Button 
-                          type="button"
-                          variant="ghost" 
-                          size="sm" 
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => setShowPassword(!showPassword)}
+                          type="button" 
+                          variant="link" 
+                          className="px-0 text-sm h-auto"
+                          onClick={() => setShowResetForm(true)}
                         >
-                          {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                          Forgot password?
                         </Button>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <Button 
-                        type="button" 
-                        variant="link" 
-                        className="px-0 text-sm h-auto"
-                        onClick={() => setShowResetForm(true)}
-                      >
-                        Forgot password?
+                      <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? "Logging in..." : "Login"}
                       </Button>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Logging in..." : "Login"}
-                    </Button>
-                  </form>
+                    </form>
+                  </Form>
                 </TabsContent>
                 
                 <TabsContent value="signup">
-                  <form onSubmit={handleSignup} className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email</Label>
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
+                  <Form {...signupForm}>
+                    <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4 mt-4">
+                      <FormField
+                        control={signupForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Choose a username" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Username</Label>
-                      <Input
-                        id="username"
-                        placeholder="Choose a username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
+                      <FormField
+                        control={signupForm.control}
+                        name="fullName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name (Optional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Your full name" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
-                        id="fullName"
-                        placeholder="Your full name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
+                      <FormField
+                        control={signupForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email (Optional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email"
+                                placeholder="Enter your email" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Email is optional, but required for password recovery
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="signup-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Choose a password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
-                        <Button 
-                          type="button"
-                          variant="ghost" 
-                          size="sm" 
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
-                        </Button>
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Creating Account..." : "Sign Up"}
-                    </Button>
-                  </form>
+                      <FormField
+                        control={signupForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  type={showPassword ? "text" : "password"}
+                                  placeholder="Choose a password"
+                                  {...field}
+                                />
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="absolute right-0 top-0 h-full px-3"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                >
+                                  {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                                </Button>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? "Creating Account..." : "Sign Up"}
+                      </Button>
+                    </form>
+                  </Form>
                 </TabsContent>
               </Tabs>
             )}

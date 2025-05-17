@@ -1,334 +1,270 @@
 
-import { useState } from "react";
-import { PageLayout } from "@/components/layout/PageLayout";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { 
-  MoreHorizontal, 
-  Lock, 
-  Unlock, 
-  Shield, 
-  ShieldOff, 
-  Trophy,
-  Star,
-  UserCheck,
-  Mail
-} from "lucide-react";
+import { PageLayout } from "@/components/layout/PageLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { User } from "@/types";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { MoreHorizontal, Search, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, User as UserIcon } from "lucide-react";
 
 const UsersPage = () => {
-  const { users, blockUser, updateUserRole } = useAuth();
+  const { currentUser, getAllUsers, users, blockUser, updateProfile } = useAuth();
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [processing, setProcessing] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showAwardDialog, setShowAwardDialog] = useState(false);
-  const [pointsToAward, setPointsToAward] = useState(0);
-
-  const handleBlockUser = async (user: User) => {
-    try {
-      setProcessing(user.id);
-      await blockUser(user.id, !user.isBlocked);
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleRoleToggle = async (user: User) => {
-    try {
-      setProcessing(user.id);
-      await updateUserRole(user.id, user.role === 'admin' ? 'user' : 'admin');
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const awardPoints = async () => {
-    if (!selectedUser || pointsToAward <= 0) return;
+  const [showBlocked, setShowBlocked] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        await getAllUsers();
+      } catch (error) {
+        console.error("Failed to load users:", error);
+      }
+    };
     
+    loadUsers();
+  }, [getAllUsers]);
+  
+  useEffect(() => {
+    const filtered = users.filter(user => 
+      (activeTab === "all" || 
+       (activeTab === "admins" && user.role === "admin") || 
+       (activeTab === "users" && user.role === "user")) &&
+      (user.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+       user.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (showBlocked || !user.isBlocked)
+    );
+    setFilteredUsers(filtered);
+  }, [users, searchTerm, showBlocked, activeTab]);
+  
+  const handleUpdateRole = async (userId: string, role: 'admin' | 'user') => {
     try {
-      setProcessing(selectedUser.id);
-      // Implementation would go here
-      // Add the points logic later
+      await updateProfile({
+        id: userId,
+        role: role
+      });
       
-      setShowAwardDialog(false);
-      setPointsToAward(0);
-      setSelectedUser(null);
-    } finally {
-      setProcessing(null);
+      toast.success(`User role updated to ${role}`);
+    } catch (error: any) {
+      toast.error(`Failed to update role: ${error.message}`);
     }
   };
-
-  const filteredUsers = users.filter((user) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      user.username?.toLowerCase().includes(searchLower) ||
-      user.email?.toLowerCase().includes(searchLower)
-    );
-  });
-
+  
+  if (!currentUser || currentUser.role !== "admin") {
+    return <PageLayout requireAuth>You don't have permission to view this page</PageLayout>;
+  }
+  
   return (
-    <PageLayout requireAuth requireAdmin title="User Management">
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-            <p className="text-muted-foreground">Manage users and assign roles</p>
+    <PageLayout requireAuth title="User Management">
+      <Card className="bg-card/95 backdrop-blur-sm border-opacity-50">
+        <CardHeader>
+          <CardTitle>User Management</CardTitle>
+          <CardDescription>View and manage user accounts</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="showBlocked" 
+                  checked={showBlocked}
+                  onCheckedChange={(checked) => setShowBlocked(checked as boolean)}
+                />
+                <label 
+                  htmlFor="showBlocked"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Show blocked users
+                </label>
+              </div>
+            </div>
           </div>
-          <div className="w-full sm:w-64">
-            <Input 
-              placeholder="Search users..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full"
-            />
-          </div>
-        </div>
-        
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="all">All Users</TabsTrigger>
-            <TabsTrigger value="admins">Admins</TabsTrigger>
-            <TabsTrigger value="users">Regular Users</TabsTrigger>
-            <TabsTrigger value="blocked">Blocked</TabsTrigger>
-          </TabsList>
           
-          <TabsContent value="all">
-            <UserTable 
-              users={filteredUsers} 
-              processing={processing}
-              handleBlockUser={handleBlockUser}
-              handleRoleToggle={handleRoleToggle}
-              setSelectedUser={setSelectedUser}
-              setShowAwardDialog={setShowAwardDialog}
-            />
-          </TabsContent>
-          
-          <TabsContent value="admins">
-            <UserTable 
-              users={filteredUsers.filter(user => user.role === 'admin')}
-              processing={processing}
-              handleBlockUser={handleBlockUser}
-              handleRoleToggle={handleRoleToggle}
-              setSelectedUser={setSelectedUser}
-              setShowAwardDialog={setShowAwardDialog}
-            />
-          </TabsContent>
-          
-          <TabsContent value="users">
-            <UserTable 
-              users={filteredUsers.filter(user => user.role === 'user')} 
-              processing={processing}
-              handleBlockUser={handleBlockUser}
-              handleRoleToggle={handleRoleToggle}
-              setSelectedUser={setSelectedUser}
-              setShowAwardDialog={setShowAwardDialog}
-            />
-          </TabsContent>
-          
-          <TabsContent value="blocked">
-            <UserTable 
-              users={filteredUsers.filter(user => user.isBlocked)}
-              processing={processing}
-              handleBlockUser={handleBlockUser}
-              handleRoleToggle={handleRoleToggle}
-              setSelectedUser={setSelectedUser}
-              setShowAwardDialog={setShowAwardDialog}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
-      
-      {/* Award Points Dialog */}
-      <Dialog open={showAwardDialog} onOpenChange={setShowAwardDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Award Points to {selectedUser?.username}</DialogTitle>
-            <DialogDescription>
-              Enter the number of points you want to award to this user.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              type="number"
-              min="0"
-              value={pointsToAward}
-              onChange={(e) => setPointsToAward(parseInt(e.target.value) || 0)}
-              placeholder="Enter points"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAwardDialog(false)}>Cancel</Button>
-            <Button onClick={awardPoints}>Award Points</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="all">All Users</TabsTrigger>
+              <TabsTrigger value="admins">Administrators</TabsTrigger>
+              <TabsTrigger value="users">Standard Users</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="all" className="space-y-4">
+              <UsersTable 
+                users={filteredUsers} 
+                currentUser={currentUser} 
+                onBlockUser={blockUser}
+                onUpdateRole={handleUpdateRole}
+              />
+            </TabsContent>
+            
+            <TabsContent value="admins" className="space-y-4">
+              <UsersTable 
+                users={filteredUsers} 
+                currentUser={currentUser} 
+                onBlockUser={blockUser}
+                onUpdateRole={handleUpdateRole}
+              />
+            </TabsContent>
+            
+            <TabsContent value="users" className="space-y-4">
+              <UsersTable 
+                users={filteredUsers} 
+                currentUser={currentUser} 
+                onBlockUser={blockUser}
+                onUpdateRole={handleUpdateRole}
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </PageLayout>
   );
 };
 
-interface UserTableProps {
+// UsersTable component
+interface UsersTableProps {
   users: User[];
-  processing: string | null;
-  handleBlockUser: (user: User) => Promise<void>;
-  handleRoleToggle: (user: User) => Promise<void>;
-  setSelectedUser: (user: User) => void;
-  setShowAwardDialog: (show: boolean) => void;
+  currentUser: User;
+  onBlockUser: (userId: string, isBlocked: boolean) => Promise<void>;
+  onUpdateRole: (userId: string, role: 'admin' | 'user') => Promise<void>;
 }
 
-const UserTable = ({ 
-  users, 
-  processing,
-  handleBlockUser,
-  handleRoleToggle,
-  setSelectedUser,
-  setShowAwardDialog
-}: UserTableProps) => {
+const UsersTable = ({ users, currentUser, onBlockUser, onUpdateRole }: UsersTableProps) => {
   return (
-    <Card className="p-6">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>User</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Points</TableHead>
+            <TableHead>Joined</TableHead>
+            <TableHead className="w-[80px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.length === 0 ? (
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Points</TableHead>
-              <TableHead>Email Verified</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableCell colSpan={6} className="h-24 text-center">
+                No users found.
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((user) => (
+          ) : (
+            users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{user.username || "No username"}</div>
-                    <div className="text-sm text-muted-foreground">{user.email}</div>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.avatarUrl} />
+                      <AvatarFallback>
+                        <UserIcon className="h-4 w-4" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{user.username}</div>
+                      <div className="text-xs text-muted-foreground">{user.email}</div>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={user.role === "admin" ? "secondary" : "outline"}>
-                    {user.role}
-                  </Badge>
+                  {user.isBlocked ? (
+                    <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                      <XCircle className="h-3 w-3" /> Blocked
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 flex items-center gap-1 w-fit">
+                      <CheckCircle2 className="h-3 w-3" /> Active
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {user.role === "admin" ? (
+                    <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                      <ShieldAlert className="h-3 w-3" /> Admin
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                      <UserIcon className="h-3 w-3" /> User
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>{user.points}</TableCell>
                 <TableCell>
-                  {(user.emailVerified || user.email_verified) ? (
-                    <Badge variant="success" className="bg-success/20 text-success border-success/30">
-                      Verified
-                    </Badge>
+                  {user.createdAt ? (
+                    format(new Date(user.createdAt), "PP")
                   ) : (
-                    <Badge variant="outline" className="text-muted-foreground">
-                      Pending
-                    </Badge>
+                    "Unknown"
                   )}
                 </TableCell>
                 <TableCell>
-                  {(user.createdAt || user.created_at)
-                    ? format(new Date(user.createdAt || user.created_at || ''), "MMM d, yyyy")
-                    : "Unknown"}
-                </TableCell>
-                <TableCell>
-                  {user.isBlocked ? (
-                    <Badge variant="destructive">Blocked</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-success bg-success/10">
-                      Active
-                    </Badge>
+                  {user.id !== currentUser.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {user.role !== "admin" ? (
+                          <DropdownMenuItem
+                            onClick={() => onUpdateRole(user.id, "admin")}
+                          >
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            Make Admin
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => onUpdateRole(user.id, "user")}
+                          >
+                            <UserIcon className="mr-2 h-4 w-4" />
+                            Make User
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => onBlockUser(user.id, !user.isBlocked)}
+                        >
+                          {user.isBlocked ? (
+                            <>
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Unblock User
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Block User
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" disabled={processing === user.id}>
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem 
-                        onClick={() => handleBlockUser(user)}
-                        className={user.isBlocked ? "text-success" : "text-destructive"}
-                      >
-                        {user.isBlocked ? (
-                          <>
-                            <Unlock className="mr-2 h-4 w-4" />
-                            <span>Unblock User</span>
-                          </>
-                        ) : (
-                          <>
-                            <Lock className="mr-2 h-4 w-4" />
-                            <span>Block User</span>
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleRoleToggle(user)}>
-                        {user.role === 'admin' ? (
-                          <>
-                            <ShieldOff className="mr-2 h-4 w-4" />
-                            <span>Remove Admin</span>
-                          </>
-                        ) : (
-                          <>
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span>Make Admin</span>
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowAwardDialog(true);
-                        }}
-                      >
-                        <Trophy className="mr-2 h-4 w-4" />
-                        <span>Award Points</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
               </TableRow>
-            ))}
-            {users.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                  No users found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

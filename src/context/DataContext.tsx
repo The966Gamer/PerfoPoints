@@ -1,703 +1,531 @@
-import { ReactNode, createContext, useContext, useEffect, useState } from "react";
+import { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./AuthContext";
-import { Task, Reward, PointRequest, CustomRequest, DbToFrontendMappings } from "@/types";
-import { useToast } from "@/hooks/use-toast";
+import { PointRequest, CustomRequest, Task, Reward, User } from "@/types";
+import { toast } from "sonner";
 
-// Context type definition
 interface DataContextType {
+  pointRequests: PointRequest[];
+  customRequests: CustomRequest[];
   tasks: Task[];
   rewards: Reward[];
-  requests: PointRequest[];
-  customRequests: CustomRequest[];
   loading: boolean;
-  createTask: (task: Omit<Task, "id" | "createdAt">) => Promise<void>;
-  updateTask: (id: string, task: Partial<Task>) => Promise<void>;
-  deleteTask: (id: string) => Promise<void>;
-  createReward: (reward: Omit<Reward, "id" | "createdAt">) => Promise<void>;
-  updateReward: (id: string, reward: Partial<Reward>) => Promise<void>;
-  deleteReward: (id: string) => Promise<void>;
-  redeemReward: (rewardId: string) => Promise<void>;
-  createPointRequest: (taskId: string, photoUrl?: string | null, comment?: string | null) => Promise<void>;
-  reviewPointRequest: (requestId: string, approved: boolean) => Promise<void>;
-  createCustomRequest: (request: Omit<CustomRequest, "id" | "status" | "userId" | "createdAt" | "username">) => Promise<void>;
-  reviewCustomRequest: (requestId: string, approved: boolean) => Promise<void>;
-  // Aliases for common actions
-  addTask: (task: Omit<Task, "id" | "createdAt">) => Promise<void>;
-  addReward: (reward: Omit<Reward, "id" | "createdAt">) => Promise<void>;
+  fetchPointRequests: () => Promise<void>;
+  fetchCustomRequests: () => Promise<void>;
+  fetchAllTasks: () => Promise<void>;
+  fetchAllRewards: () => Promise<void>;
+  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'createdBy'>) => Promise<void>;
+  createReward: (reward: Omit<Reward, 'id' | 'createdAt' | 'createdBy'>) => Promise<void>;
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<boolean>;
+  updateReward: (rewardId: string, updates: Partial<Reward>) => Promise<boolean>;
+  deleteTask: (taskId: string) => Promise<void>;
+  deleteReward: (rewardId: string) => Promise<void>;
+  submitPointRequest: (taskId: string, photoUrl: string | null, comment: string | null) => Promise<void>;
+  submitCustomRequest: (request: Omit<CustomRequest, 'id' | 'createdAt' | 'updatedAt' | 'reviewedBy'>) => Promise<void>;
+  reviewPointRequest: (requestId: string, status: "approved" | "rejected", userId: string, taskId: string, pointValue: number) => Promise<boolean>;
+  reviewCustomRequest: (requestId: string, status: "approved" | "rejected") => Promise<void>;
+  updateUserProfile: (userId: string, data: Partial<User>) => Promise<boolean>;
 }
 
-// Create context
 const DataContext = createContext<DataContextType>({
+  pointRequests: [],
+  customRequests: [],
   tasks: [],
   rewards: [],
-  requests: [],
-  customRequests: [],
   loading: true,
+  fetchPointRequests: async () => {},
+  fetchCustomRequests: async () => {},
+  fetchAllTasks: async () => {},
+  fetchAllRewards: async () => {},
   createTask: async () => {},
-  updateTask: async () => {},
-  deleteTask: async () => {},
   createReward: async () => {},
-  updateReward: async () => {},
+  updateTask: async () => false,
+  updateReward: async () => false,
+  deleteTask: async () => {},
   deleteReward: async () => {},
-  redeemReward: async () => {},
-  createPointRequest: async () => {},
-  reviewPointRequest: async () => {},
-  createCustomRequest: async () => {},
+  submitPointRequest: async () => {},
+  submitCustomRequest: async () => {},
+  reviewPointRequest: async () => false,
   reviewCustomRequest: async () => {},
-  addTask: async () => {},
-  addReward: async () => {},
+  updateUserProfile: async () => false,
 });
 
-// Data Provider component
+export const useData = () => useContext(DataContext);
+
+// Notification function
+const createNotification = async (notification: any) => {
+  try {
+    const { error } = await supabase
+      .from("notifications")
+      .insert([notification]);
+    
+    if (error) throw error;
+    
+    console.log("Notification created:", notification);
+  } catch (error: any) {
+    console.error("Error creating notification:", error);
+  }
+};
+
+// Context provider component
 export const DataProvider = ({ children }: { children: ReactNode }) => {
-  const { currentUser } = useAuth();
+  const [pointRequests, setPointRequests] = useState<PointRequest[]>([]);
+  const [customRequests, setCustomRequests] = useState<CustomRequest[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
-  const [requests, setRequests] = useState<PointRequest[]>([]);
-  const [customRequests, setCustomRequests] = useState<CustomRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
-  // Fetch data on initial load
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentUser) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        // Fetch tasks
-        const { data: tasksData, error: tasksError } = await supabase
-          .from("tasks")
-          .select("*")
-          .order("created_at", { ascending: false });
-        
-        if (tasksError) throw tasksError;
-        
-        // Map database fields to our Task type
-        const mappedTasks: Task[] = (tasksData || []).map(task => ({
-          id: task.id,
-          title: task.title,
-          description: task.description || "",
-          pointValue: task.points_value,
-          autoReset: task.recurring || false,
-          createdAt: task.created_at,
-          createdBy: task.created_by || "",
-          category: task.category,
-          status: 'active'
-        }));
-        
-        setTasks(mappedTasks);
-        
-        // Fetch rewards
-        const { data: rewardsData, error: rewardsError } = await supabase
-          .from("rewards")
-          .select("*")
-          .order("points_cost", { ascending: true });
-        
-        if (rewardsError) throw rewardsError;
-        
-        // Map database fields to our Reward type
-        const mappedRewards: Reward[] = (rewardsData || []).map(reward => ({
-          id: reward.id,
-          title: reward.title,
-          description: reward.description || "",
-          pointCost: reward.points_cost,
-          approvalKeyRequired: reward.requires_approval,
-          createdAt: new Date().toISOString(), // Since we don't have this field in the DB
-          createdBy: currentUser?.id || "", 
-        }));
-        
-        setRewards(mappedRewards);
-        
-        // Fetch point requests
-        const { data: requestsData, error: requestsError } = await supabase
-          .from("point_requests")
-          .select(`
-            *,
-            tasks:task_id(title, points_value),
-            profiles:user_id(username)
-          `)
-          .order("created_at", { ascending: false });
-        
-        if (requestsError) throw requestsError;
-        
-        // Safety check for profiles and casting
-        const formattedRequests: PointRequest[] = requestsData?.map(req => {
-          // Handle potentially null profiles safely
-          const username = req.profiles && typeof req.profiles === 'object' && 'username' in req.profiles 
-            ? (req.profiles.username as string) || "Unknown User" 
-            : "Unknown User";
-          
-          return {
-            id: req.id,
-            userId: req.user_id,
-            taskId: req.task_id,
-            status: req.status as "pending" | "approved" | "rejected",
-            createdAt: req.created_at,
-            updatedAt: req.updated_at || undefined,
-            reviewedBy: req.reviewed_by || undefined,
-            taskTitle: req.tasks?.title || "Unknown Task",
-            pointValue: req.tasks?.points_value || 0,
-            username: username,
-            photoUrl: req.photo_url || null,
-            comment: req.comment || null
-          };
-        }) || [];
-        
-        setRequests(formattedRequests);
-        
-        // Fetch custom requests
-        const { data: customRequestsData, error: customRequestsError } = await supabase
-          .from("custom_requests")
-          .select(`
-            *,
-            profiles:user_id(username)
-          `)
-          .order("created_at", { ascending: false });
-        
-        if (customRequestsError) throw customRequestsError;
-        
-        // Safety check for profiles and casting
-        const formattedCustomRequests: CustomRequest[] = customRequestsData?.map(req => {
-          // Handle potentially null profiles safely
-          const username = req.profiles && typeof req.profiles === 'object' && 'username' in req.profiles 
-            ? (req.profiles.username as string) || "Unknown User"  
-            : "Unknown User";
-          
-          // Handle the reviewed_by property safely
-          const reviewedBy = 'reviewed_by' in req ? (req as any).reviewed_by : undefined;
-          
-          return {
-            id: req.id,
-            userId: req.user_id,
-            title: req.title,
-            description: req.description,
-            type: req.type as "task" | "reward" | "other",
-            status: req.status as "pending" | "approved" | "rejected",
-            createdAt: req.created_at,
-            updatedAt: req.updated_at,
-            reviewedBy: reviewedBy,
-            username: username
-          };
-        }) || [];
-        
-        setCustomRequests(formattedCustomRequests);
-        
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    
-    // Listen for realtime updates
-    const subscribeToUpdates = () => {
-      const taskSubscription = supabase
-        .channel("tasks-channel")
-        .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, fetchData)
-        .subscribe();
-      
-      const rewardSubscription = supabase
-        .channel("rewards-channel")
-        .on("postgres_changes", { event: "*", schema: "public", table: "rewards" }, fetchData)
-        .subscribe();
-      
-      const requestSubscription = supabase
-        .channel("point-requests-channel")
-        .on("postgres_changes", { event: "*", schema: "public", table: "point_requests" }, fetchData)
-        .subscribe();
-      
-      const customRequestSubscription = supabase
-        .channel("custom-requests-channel")
-        .on("postgres_changes", { event: "*", schema: "public", table: "custom_requests" }, fetchData)
-        .subscribe();
-      
-      return () => {
-        taskSubscription.unsubscribe();
-        rewardSubscription.unsubscribe();
-        requestSubscription.unsubscribe();
-        customRequestSubscription.unsubscribe();
-      };
-    };
-    
-    const unsubscribe = subscribeToUpdates();
-    return unsubscribe;
-  }, [currentUser]);
-
-  // Create task
-  const createTask = async (task: Omit<Task, "id" | "createdAt">) => {
+  // Fetch point requests
+  const fetchPointRequests = async () => {
     try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can create tasks");
-      }
+      setLoading(true);
       
-      // Map task to database schema
-      const dbTask = {
-        title: task.title,
-        description: task.description,
-        points_value: task.pointValue,
-        recurring: task.autoReset,
-        created_by: currentUser.id,
-        category: task.category,
-        status: 'active'
-      };
-      
-      const { error } = await supabase.from("tasks").insert(dbTask);
+      const { data, error } = await supabase
+        .from("point_requests")
+        .select(`*, profiles:user_id(username), tasks:task_id(title, points_value)`)
+        .order("created_at", { ascending: false });
       
       if (error) throw error;
       
-      toast({
-        title: "Task created",
-        description: "A new task has been created successfully",
-      });
+      // Map database columns to frontend naming
+      const mappedPointRequests: PointRequest[] = data.map(req => ({
+        id: req.id,
+        userId: req.user_id,
+        taskId: req.task_id,
+        status: req.status as "pending" | "approved" | "rejected",
+        createdAt: req.created_at,
+        updatedAt: req.updated_at,
+        reviewedBy: req.reviewed_by,
+        photoUrl: req.photo_url,
+        comment: req.comment,
+        taskTitle: (req.tasks as any)?.title,
+        pointValue: (req.tasks as any)?.points_value,
+        username: (req.profiles as any)?.username
+      }));
+      
+      setPointRequests(mappedPointRequests);
     } catch (error: any) {
-      toast({
-        title: "Failed to create task",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error("Error fetching point requests:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Update task
-  const updateTask = async (id: string, task: Partial<Task>) => {
+  // Fetch custom requests
+  const fetchCustomRequests = async () => {
     try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can update tasks");
-      }
+      setLoading(true);
       
-      // Map task to database schema
-      const dbTask: any = {};
-      if (task.title !== undefined) dbTask.title = task.title;
-      if (task.description !== undefined) dbTask.description = task.description;
-      if (task.pointValue !== undefined) dbTask.points_value = task.pointValue;
-      if (task.autoReset !== undefined) dbTask.recurring = task.autoReset;
+      const { data, error } = await supabase
+        .from("custom_requests")
+        .select(`*, profiles:user_id(username)`)
+        .order("created_at", { ascending: false });
       
-      const { error } = await supabase
+      if (error) throw error;
+      
+      // Map database columns to frontend naming
+      const mappedCustomRequests: CustomRequest[] = data.map(req => ({
+        id: req.id,
+        userId: req.user_id,
+        title: req.title,
+        description: req.description,
+        type: req.type as "task" | "reward" | "other",
+        status: req.status as "pending" | "approved" | "rejected",
+        createdAt: req.created_at,
+        updatedAt: req.updated_at,
+        reviewedBy: req.reviewed_by,
+        username: (req.profiles as any)?.username
+      }));
+      
+      setCustomRequests(mappedCustomRequests);
+    } catch (error: any) {
+      console.error("Error fetching custom requests:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch all tasks
+  const fetchAllTasks = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
         .from("tasks")
-        .update(dbTask)
-        .eq("id", id);
+        .select("*")
+        .order("created_at", { ascending: false });
       
       if (error) throw error;
       
-      toast({
-        title: "Task updated",
-        description: "The task has been updated successfully",
-      });
+      setTasks(data);
     } catch (error: any) {
-      toast({
-        title: "Failed to update task",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error("Error fetching tasks:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Delete task
-  const deleteTask = async (id: string) => {
+  // Fetch all rewards
+  const fetchAllRewards = async () => {
     try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can delete tasks");
-      }
+      setLoading(true);
       
-      const { error } = await supabase
-        .from("tasks")
-        .delete()
-        .eq("id", id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Task deleted",
-        description: "The task has been deleted successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to delete task",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  // Create reward
-  const createReward = async (reward: Omit<Reward, "id" | "createdAt">) => {
-    try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can create rewards");
-      }
-      
-      // Map reward to database schema
-      const dbReward = {
-        title: reward.title,
-        description: reward.description,
-        points_cost: reward.pointCost,
-        requires_approval: reward.approvalKeyRequired,
-        category: reward.category,
-        created_by: currentUser.id
-      };
-      
-      const { error } = await supabase.from("rewards").insert(dbReward);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Reward created",
-        description: "A new reward has been created successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to create reward",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  // Update reward
-  const updateReward = async (id: string, reward: Partial<Reward>) => {
-    try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can update rewards");
-      }
-      
-      // Map reward to database schema
-      const dbReward: any = {};
-      if (reward.title !== undefined) dbReward.title = reward.title;
-      if (reward.description !== undefined) dbReward.description = reward.description;
-      if (reward.pointCost !== undefined) dbReward.points_cost = reward.pointCost;
-      if (reward.approvalKeyRequired !== undefined) dbReward.requires_approval = reward.approvalKeyRequired;
-      
-      const { error } = await supabase
-        .from("rewards")
-        .update(dbReward)
-        .eq("id", id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Reward updated",
-        description: "The reward has been updated successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to update reward",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  // Delete reward
-  const deleteReward = async (id: string) => {
-    try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can delete rewards");
-      }
-      
-      const { error } = await supabase
-        .from("rewards")
-        .delete()
-        .eq("id", id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Reward deleted",
-        description: "The reward has been deleted successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to delete reward",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  // Redeem reward
-  const redeemReward = async (rewardId: string) => {
-    try {
-      if (!currentUser) {
-        throw new Error("You must be logged in to redeem rewards");
-      }
-      
-      // Get reward details
-      const { data: reward, error: rewardError } = await supabase
+      const { data, error } = await supabase
         .from("rewards")
         .select("*")
-        .eq("id", rewardId)
-        .single();
+        .order("created_at", { ascending: false });
       
-      if (rewardError) throw rewardError;
-      if (!reward) throw new Error("Reward not found");
+      if (error) throw error;
       
-      // Check if user has enough points
-      if (currentUser.points < reward.points_cost) {
-        throw new Error(`Not enough points. You need ${reward.points_cost} points to redeem this reward.`);
-      }
-      
-      // Use a transaction or batch operations
-      const newPoints = currentUser.points - reward.points_cost;
-      
-      // First update user's points
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ points: newPoints })
-        .eq("id", currentUser.id);
-      
-      if (updateError) throw updateError;
-      
-      // Then record the redemption 
-      // Note: if your DB schema has a table for redemptions, use that instead
-      const { error: historyError } = await supabase
-        .from("points_history")
-        .insert({
-          user_id: currentUser.id,
-          points: -reward.points_cost, // Negative points since it's a reduction
-          new_total: newPoints,
-          reason: `Redeemed reward: ${reward.title}`,
-          type: "redemption"
-        });
-      
-      if (historyError) throw historyError;
-      
-      toast({
-        title: "Reward redeemed",
-        description: `You have successfully redeemed ${reward.title} for ${reward.points_cost} points`,
-      });
+      setRewards(data);
     } catch (error: any) {
-      toast({
-        title: "Failed to redeem reward",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error("Error fetching rewards:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Create point request
-  const createPointRequest = async (taskId: string, photoUrl?: string | null, comment?: string | null) => {
+  // Create a new task
+  const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'createdBy'>) => {
     try {
-      if (!currentUser) {
-        throw new Error("You must be logged in to request points");
-      }
+      const { error } = await supabase
+        .from("tasks")
+        .insert([{ ...task, created_by: supabase.auth.currentUser?.uid }]);
       
-      // Check if task exists
+      if (error) throw error;
+      
+      toast.success("Task created successfully!");
+      fetchAllTasks();
+    } catch (error: any) {
+      console.error("Error creating task:", error);
+      toast.error(error.message);
+    }
+  };
+
+  // Create a new reward
+  const createReward = async (reward: Omit<Reward, 'id' | 'createdAt' | 'createdBy'>) => {
+    try {
+      const { error } = await supabase
+        .from("rewards")
+        .insert([{ ...reward, created_by: supabase.auth.currentUser?.uid }]);
+      
+      if (error) throw error;
+      
+      toast.success("Reward created successfully!");
+      fetchAllRewards();
+    } catch (error: any) {
+      console.error("Error creating reward:", error);
+      toast.error(error.message);
+    }
+  };
+
+  // Update an existing task
+  const updateTask = async (taskId: string, updates: Partial<Task>): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update(updates)
+        .eq("id", taskId);
+      
+      if (error) throw error;
+      
+      toast.success("Task updated successfully!");
+      fetchAllTasks();
+      return true;
+    } catch (error: any) {
+      console.error("Error updating task:", error);
+      toast.error(error.message);
+      return false;
+    }
+  };
+
+  // Update an existing reward
+  const updateReward = async (rewardId: string, updates: Partial<Reward>): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("rewards")
+        .update(updates)
+        .eq("id", rewardId);
+      
+      if (error) throw error;
+      
+      toast.success("Reward updated successfully!");
+      fetchAllRewards();
+      return true;
+    } catch (error: any) {
+      console.error("Error updating reward:", error);
+      toast.error(error.message);
+      return false;
+    }
+  };
+
+  // Delete a task
+  const deleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("id", taskId);
+      
+      if (error) throw error;
+      
+      toast.success("Task deleted successfully!");
+      fetchAllTasks();
+    } catch (error: any) {
+      console.error("Error deleting task:", error);
+      toast.error(error.message);
+    }
+  };
+
+  // Delete a reward
+  const deleteReward = async (rewardId: string) => {
+    try {
+      const { error } = await supabase
+        .from("rewards")
+        .delete()
+        .eq("id", rewardId);
+      
+      if (error) throw error;
+      
+      toast.success("Reward deleted successfully!");
+      fetchAllRewards();
+    } catch (error: any) {
+      console.error("Error deleting reward:", error);
+      toast.error(error.message);
+    }
+  };
+
+  // Submit a point request
+  const submitPointRequest = async (taskId: string, photoUrl: string | null, comment: string | null) => {
+    try {
+      const userId = supabase.auth.currentUser?.uid;
+      if (!userId) throw new Error("No user logged in");
+      
+      // Get task details for the request
       const { data: task, error: taskError } = await supabase
         .from("tasks")
-        .select("id")
+        .select("title, points_value")
         .eq("id", taskId)
         .single();
       
       if (taskError) throw taskError;
-      if (!task) throw new Error("Task not found");
       
-      // Create point request
       const { error } = await supabase
         .from("point_requests")
-        .insert({
-          user_id: currentUser.id,
+        .insert([{ 
+          user_id: userId, 
           task_id: taskId,
-          photo_url: photoUrl || null,
-          comment: comment || null
-        });
+          photo_url: photoUrl,
+          comment: comment
+        }]);
       
       if (error) throw error;
       
-      toast({
-        title: "Request submitted",
-        description: "Your task completion request has been submitted for review",
+      toast.success("Point request submitted successfully!");
+      fetchPointRequests();
+      
+      // Send a notification to admins about the new request
+      await createNotification({
+        title: "New Point Request",
+        message: `A new point request has been submitted for task "${task?.title}"`,
+        type: "info",
+        userId: userId
       });
     } catch (error: any) {
-      toast({
-        title: "Failed to submit request",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error("Error submitting point request:", error);
+      toast.error(error.message);
     }
   };
 
-  // Review point request
-  const reviewPointRequest = async (requestId: string, approved: boolean) => {
+  // Submit a custom request
+  const submitCustomRequest = async (request: Omit<CustomRequest, 'id' | 'createdAt' | 'updatedAt' | 'reviewedBy'>) => {
     try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can review point requests");
-      }
+      const userId = supabase.auth.currentUser?.uid;
+      if (!userId) throw new Error("No user logged in");
       
-      // Get request details
-      const { data: request, error: requestError } = await supabase
+      const { error } = await supabase
+        .from("custom_requests")
+        .insert([{ ...request, user_id: userId }]);
+      
+      if (error) throw error;
+      
+      toast.success("Custom request submitted successfully!");
+      fetchCustomRequests();
+      
+      // Send a notification to admins about the new custom request
+      await createNotification({
+        title: "New Custom Request",
+        message: `A new custom request of type "${request.type}" has been submitted`,
+        type: "info",
+        userId: userId
+      });
+    } catch (error: any) {
+      console.error("Error submitting custom request:", error);
+      toast.error(error.message);
+    }
+  };
+
+  // Function to approve or reject a point request
+  const reviewPointRequest = async (
+    requestId: string,
+    status: "approved" | "rejected",
+    userId: string,
+    taskId: string,
+    pointValue: number,
+  ) => {
+    try {
+      const { error } = await supabase
         .from("point_requests")
-        .select("*, tasks:task_id(points_value)")
+        .update({ status })
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      if (status === "approved") {
+        // Award points to the user
+        const { error: updateError } = await supabase.from("profiles").update({ points: () => `points + ${pointValue}` }).eq("id", userId);
+        if (updateError) throw updateError;
+      }
+
+      // Get both user and task details for the notification
+      const { data: req, error: reqError } = await supabase
+        .from("point_requests")
+        .select(`*, profiles:user_id(*)`)
+        .eq("id", requestId)
+        .single();
+
+      if (reqError) throw reqError;
+
+      if (status === "approved") {
+        // Send a notification that points were awarded
+        await createNotification({
+          title: "Points Awarded",
+          message: `You earned ${pointValue} points for completing: ${(req.profiles as any)?.username || 'a task'}`,
+          type: "success",
+          userId: userId
+        });
+      } else {
+        // Send a notification that the request was rejected
+        await createNotification({
+          title: "Request Rejected",
+          message: `Your point request for task "${(req.profiles as any)?.username || 'Unknown'}" was rejected`,
+          type: "error",
+          userId: userId
+        });
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Error reviewing point request:", error);
+      toast.error(error.message);
+      return false;
+    } finally {
+      fetchPointRequests();
+    }
+  };
+
+  // Function to approve or reject a custom request
+  const reviewCustomRequest = async (requestId: string, status: "approved" | "rejected") => {
+    try {
+      const { error } = await supabase
+        .from("custom_requests")
+        .update({ status })
+        .eq("id", requestId);
+      
+      if (error) throw error;
+      
+      toast.success(`Custom request ${status} successfully!`);
+      fetchCustomRequests();
+      
+      // Send a notification to the user about the review
+      const { data: request, error: requestError } = await supabase
+        .from("custom_requests")
+        .select(`*, profiles:user_id(username)`)
         .eq("id", requestId)
         .single();
       
       if (requestError) throw requestError;
-      if (!request) throw new Error("Request not found");
       
-      // Update request status
-      const { error: updateError } = await supabase
-        .from("point_requests")
-        .update({
-          status: approved ? "approved" : "rejected",
-          reviewed_by: currentUser.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", requestId);
-      
-      if (updateError) throw updateError;
-      
-      // If approved, award points to the user
-      if (approved) {
-        const { data: userData, error: userError } = await supabase
-          .from("profiles")
-          .select("points")
-          .eq("id", request.user_id)
-          .single();
-        
-        if (userError) throw userError;
-        
-        const newPoints = (userData?.points || 0) + request.tasks.points_value;
-        
-        const { error: pointsError } = await supabase
-          .from("profiles")
-          .update({ points: newPoints })
-          .eq("id", request.user_id);
-        
-        if (pointsError) throw pointsError;
-      }
-      
-      toast({
-        title: `Request ${approved ? 'approved' : 'rejected'}`,
-        description: approved 
-          ? `Points have been awarded to the user`
-          : `The request has been rejected`,
+      await createNotification({
+        title: `Custom Request ${status}`,
+        message: `Your custom request "${request?.title}" has been ${status}`,
+        type: status === "approved" ? "success" : "error",
+        userId: request?.user_id
       });
     } catch (error: any) {
-      toast({
-        title: "Failed to review request",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error("Error reviewing custom request:", error);
+      toast.error(error.message);
     }
   };
 
-  // Create custom request
-  const createCustomRequest = async (request: Omit<CustomRequest, "id" | "status" | "userId" | "createdAt" | "username">) => {
+  // Update user profile function
+  const updateUserProfile = async (
+    userId: string,
+    data: Partial<User>
+  ): Promise<boolean> => {
     try {
-      if (!currentUser) {
-        throw new Error("You must be logged in to create custom requests");
-      }
-      
       const { error } = await supabase
-        .from("custom_requests")
-        .insert({
-          user_id: currentUser.id,
-          title: request.title,
-          description: request.description,
-          type: request.type,
-          status: "pending"
-        });
+        .from("profiles")
+        .update(data)
+        .eq("id", userId);
       
       if (error) throw error;
       
-      toast({
-        title: "Request submitted",
-        description: `Your ${request.type} request has been submitted for review`,
+      toast.success("User profile updated successfully!");
+
+      const { data: req, error: reqError } = await supabase
+        .from("profiles")
+        .select(`*`)
+        .eq("id", userId)
+        .single();
+
+      if (reqError) throw reqError;
+
+      // Create notification for profile update
+      await createNotification({
+        title: "Profile Updated",
+        message: `Your profile has been updated successfully, ${req?.username || 'User'}!`,
+        type: "info",
+        userId: userId
       });
+
+      return true;
     } catch (error: any) {
-      toast({
-        title: "Failed to submit request",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error("Error updating user profile:", error);
+      toast.error(error.message);
+      return false;
     }
   };
 
-  // Review custom request
-  const reviewCustomRequest = async (requestId: string, approved: boolean) => {
-    try {
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can review custom requests");
-      }
-      
-      const { error } = await supabase
-        .from("custom_requests")
-        .update({
-          status: approved ? "approved" : "rejected",
-          reviewed_by: currentUser.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", requestId);
-      
-      if (error) throw error;
-      
-      toast({
-        title: `Request ${approved ? 'approved' : 'rejected'}`,
-        description: approved 
-          ? "Custom request has been approved. You can now create the requested item."
-          : "The custom request has been rejected",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to review request",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  // Alias methods
-  const addTask = createTask;
-  const addReward = createReward;
-
-  const value = {
+  const value: DataContextType = {
+    pointRequests,
+    customRequests,
     tasks,
     rewards,
-    requests,
-    customRequests,
     loading,
+    fetchPointRequests,
+    fetchCustomRequests,
+    fetchAllTasks,
+    fetchAllRewards,
     createTask,
-    updateTask,
-    deleteTask,
     createReward,
+    updateTask,
     updateReward,
+    deleteTask,
     deleteReward,
-    redeemReward,
-    createPointRequest,
+    submitPointRequest,
+    submitCustomRequest,
     reviewPointRequest,
-    createCustomRequest,
     reviewCustomRequest,
-    // Aliases
-    addTask,
-    addReward,
+    updateUserProfile
   };
 
-  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
-};
-
-// Custom hook to use data context
-export const useData = () => {
-  const context = useContext(DataContext);
-  if (context === undefined) {
-    throw new Error("useData must be used within a DataProvider");
-  }
-  return context;
+  return (
+    <DataContext.Provider value={value}>
+      {children}
+    </DataContext.Provider>
+  );
 };

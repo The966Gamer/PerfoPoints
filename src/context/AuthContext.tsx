@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 // Extended User interface to include Supabase Auth properties
 export interface ExtendedUser extends User {
@@ -29,6 +30,9 @@ interface AuthContextType {
   updateAvatar: (file: File) => Promise<string>;
   getAllUsers: () => Promise<User[]>;
   blockUser: (userId: string, isBlocked: boolean) => Promise<void>;
+  sendVerificationEmail: (email: string) => Promise<void>;
+  changeEmail: (newEmail: string) => Promise<void>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
 }
 
 // Create context with default values
@@ -46,6 +50,9 @@ const AuthContext = createContext<AuthContextType>({
   updateAvatar: async () => "",
   getAllUsers: async () => [],
   blockUser: async () => {},
+  sendVerificationEmail: async () => {},
+  changeEmail: async () => {},
+  changePassword: async () => {},
 });
 
 // Auth Provider component
@@ -60,6 +67,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initSession = async () => {
       try {
+        // Setup auth state listener FIRST
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (event, session) => {
+            console.log("Auth state changed:", event);
+            setSession(session);
+            
+            if (session) {
+              // Use setTimeout to avoid deadlock with onAuthStateChange
+              setTimeout(async () => {
+                try {
+                  // Get user profile data
+                  const { data: profile, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .eq("id", session.user.id)
+                    .single();
+                  
+                  if (profileError) throw profileError;
+                  
+                  // Transform profile data to match User interface
+                  const userData: User = {
+                    id: profile.id,
+                    username: profile.username,
+                    role: profile.role as "admin" | "user",
+                    points: profile.points,
+                    isBlocked: profile.is_blocked || false,
+                    avatarUrl: profile.avatar_url,
+                    createdAt: profile.created_at,
+                    email: profile.email,
+                    emailVerified: profile.email_verified
+                  };
+                  
+                  setCurrentUser(userData);
+
+                  // Also load all users if admin
+                  if (userData.role === "admin") {
+                    await loadAllUsers();
+                  }
+                } catch (error) {
+                  console.error("Error in auth state change handler:", error);
+                }
+              }, 0); // defer with setTimeout
+            } else {
+              setCurrentUser(null);
+              setUsers([]);
+            }
+          }
+        );
+
+        // THEN check for existing session
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
         
@@ -95,6 +152,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             await loadAllUsers();
           }
         }
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error: any) {
         console.error("Error fetching session:", error);
       } finally {
@@ -102,57 +163,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // Setup auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
-        setSession(session);
-        
-        if (session) {
-          try {
-            // Get user profile data
-            const { data: profile, error: profileError } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .single();
-            
-            if (profileError) throw profileError;
-            
-            // Transform profile data to match User interface
-            const userData: User = {
-              id: profile.id,
-              username: profile.username,
-              role: profile.role as "admin" | "user",
-              points: profile.points,
-              isBlocked: profile.is_blocked || false,
-              avatarUrl: profile.avatar_url,
-              createdAt: profile.created_at,
-              email: profile.email,
-              emailVerified: profile.email_verified
-            };
-            
-            setCurrentUser(userData);
-
-            // Also load all users if admin
-            if (userData.role === "admin") {
-              await loadAllUsers();
-            }
-          } catch (error: any) {
-            console.error("Error fetching user profile:", error);
-          }
-        } else {
-          setCurrentUser(null);
-          setUsers([]);
-        }
-      }
-    );
-
     initSession();
-    
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [navigate]);
 
   // Load all users (for admin usage)
@@ -337,10 +348,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data) {
-        toast.success("Account created successfully! You can now sign in.");
+        // If using anonymous email, no need for verification
+        if (email.includes('@perfopointsapp.com')) {
+          toast.success("Account created successfully! You can now sign in.");
+        } else {
+          toast.success("Account created! Please check your email for verification.");
+        }
       }
     } catch (error) {
       console.error("Sign up error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Send verification email
+  const sendVerificationEmail = async (email: string) => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Verification email sent successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send verification email");
       throw error;
     } finally {
       setLoading(false);
@@ -370,6 +407,74 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Change email function
+  const changeEmail = async (newEmail: string) => {
+    try {
+      if (!currentUser) {
+        throw new Error("Not authenticated");
+      }
+      
+      setLoading(true);
+      
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail
+      });
+      
+      if (error) throw error;
+      
+      // Update profile with new email
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ email: newEmail, email_verified: false })
+        .eq("id", currentUser.id);
+      
+      if (profileError) throw profileError;
+      
+      toast.success("Email update initiated. Please check your new email for verification.");
+    } catch (error: any) {
+      toast.error(`Failed to update email: ${error.message}`);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Change password function
+  const changePassword = async (oldPassword: string, newPassword: string) => {
+    try {
+      if (!currentUser) {
+        throw new Error("Not authenticated");
+      }
+      
+      setLoading(true);
+      
+      // First verify old password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: currentUser.email || "",
+        password: oldPassword
+      });
+      
+      if (signInError) {
+        toast.error("Current password is incorrect");
+        throw signInError;
+      }
+      
+      // Then update to new password
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Password updated successfully");
+    } catch (error: any) {
+      toast.error(`Failed to update password: ${error.message}`);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Update user profile
   const updateProfile = async (data: Partial<User>): Promise<void> => {
     try {
@@ -378,26 +483,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       // Transform data to match the profiles table schema
-      const profileData = {
+      const profileData: any = {
         username: data.username,
         role: data.role,
         points: data.points,
         avatar_url: data.avatarUrl
       };
       
+      const updateId = data.id || currentUser.id;
+      
       const { error } = await supabase
         .from("profiles")
         .update(profileData)
-        .eq("id", currentUser.id);
+        .eq("id", updateId);
       
       if (error) throw error;
       
       // Update local state
-      if (currentUser) {
+      if (updateId === currentUser.id) {
         setCurrentUser({
           ...currentUser,
           ...data,
         });
+      } else {
+        // Update in users list if it's another user
+        setUsers(prevUsers => prevUsers.map(user => 
+          user.id === updateId ? { ...user, ...data } : user
+        ));
       }
       
       toast.success("Profile updated successfully");
@@ -470,6 +582,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateAvatar,
     getAllUsers,
     blockUser,
+    sendVerificationEmail,
+    changeEmail,
+    changePassword
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

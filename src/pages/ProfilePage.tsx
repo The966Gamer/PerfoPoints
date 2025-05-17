@@ -12,16 +12,14 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload, User, Mail, Check, Eye, EyeClosed } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 const ProfilePage = () => {
-  const { currentUser, updateProfile } = useAuth();
+  const { currentUser, updateProfile, updateAvatar, sendVerificationEmail, changeEmail, changePassword } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
-  const [username, setUsername] = useState(currentUser?.username || "");
-  const [fullName, setFullName] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [email, setEmail] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -31,53 +29,89 @@ const ProfilePage = () => {
     return <PageLayout requireAuth>Loading profile...</PageLayout>;
   }
   
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Profile update schema
+  const profileSchema = z.object({
+    username: z.string().min(3, { message: "Username must be at least 3 characters" }),
+    fullName: z.string().optional()
+  });
+  
+  // Email update schema
+  const emailSchema = z.object({
+    email: z.string().email({ message: "Please enter a valid email address" })
+  });
+  
+  // Password update schema
+  const passwordSchema = z.object({
+    currentPassword: z.string().min(1, { message: "Current password is required" }),
+    newPassword: z.string().min(6, { message: "New password must be at least 6 characters" }),
+    confirmPassword: z.string().min(6, { message: "Confirm password must be at least 6 characters" })
+  }).refine(data => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"]
+  });
+  
+  // Create form hooks
+  const profileForm = useForm<z.infer<typeof profileSchema>>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      username: currentUser.username || "",
+      fullName: ""
+    }
+  });
+  
+  const emailForm = useForm<z.infer<typeof emailSchema>>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: {
+      email: currentUser.email || ""
+    }
+  });
+  
+  const passwordForm = useForm<z.infer<typeof passwordSchema>>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    }
+  });
+
+  const handleUpdateProfile = async (values: z.infer<typeof profileSchema>) => {
     try {
-      await updateProfile({ username });
+      await updateProfile({ username: values.username });
       toast.success("Profile updated successfully");
     } catch (error: any) {
       toast.error(error.message || "Error updating profile");
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      toast.error("New passwords don't match");
-      return;
-    }
-    
+  const handleChangeEmail = async (values: z.infer<typeof emailSchema>) => {
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-      
-      if (error) throw error;
-      
-      toast.success("Password updated successfully");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      await changeEmail(values.email);
     } catch (error: any) {
-      toast.error(error.message || "Error updating password");
+      toast.error(error.message || "Error updating email");
+    }
+  };
+
+  const handleChangePassword = async (values: z.infer<typeof passwordSchema>) => {
+    try {
+      await changePassword(values.currentPassword, values.newPassword);
+      passwordForm.reset();
+    } catch (error: any) {
+      // Error is handled in the changePassword function
     }
   };
 
   const handleSendVerificationEmail = async () => {
+    if (!currentUser.email) {
+      toast.error("No email address associated with this account");
+      return;
+    }
+    
     try {
       setIsVerificationEmailSending(true);
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: currentUser.email
-      });
-      
-      if (error) throw error;
-      
-      toast.success("Verification email sent successfully");
+      await sendVerificationEmail(currentUser.email);
     } catch (error: any) {
-      toast.error(error.message || "Error sending verification email");
+      // Error is handled in the sendVerificationEmail function
     } finally {
       setIsVerificationEmailSending(false);
     }
@@ -155,21 +189,23 @@ const ProfilePage = () => {
                 <h3 className="text-lg font-medium">{currentUser.username || "No username set"}</h3>
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Mail size={14} />
-                  <span>{currentUser.email}</span>
-                  {currentUser.emailVerified ? (
-                    <span className="inline-flex items-center text-green-500">
-                      <Check size={14} className="mr-1" /> Verified
-                    </span>
-                  ) : (
-                    <Button 
-                      variant="link" 
-                      size="sm" 
-                      className="p-0 h-auto text-amber-500"
-                      onClick={handleSendVerificationEmail}
-                      disabled={isVerificationEmailSending}
-                    >
-                      {isVerificationEmailSending ? "Sending..." : "Verify now"}
-                    </Button>
+                  <span>{currentUser.email || "No email set"}</span>
+                  {currentUser.email && (
+                    currentUser.emailVerified ? (
+                      <span className="inline-flex items-center text-green-500">
+                        <Check size={14} className="mr-1" /> Verified
+                      </span>
+                    ) : (
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="p-0 h-auto text-amber-500"
+                        onClick={handleSendVerificationEmail}
+                        disabled={isVerificationEmailSending}
+                      >
+                        {isVerificationEmailSending ? "Sending..." : "Verify now"}
+                      </Button>
+                    )
                   )}
                 </div>
               </div>
@@ -198,6 +234,7 @@ const ProfilePage = () => {
           <TabsList className="w-full">
             <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
             <TabsTrigger value="security" className="flex-1">Security</TabsTrigger>
+            <TabsTrigger value="email" className="flex-1">Email</TabsTrigger>
           </TabsList>
           
           <TabsContent value="profile" className="flex-1 pt-2">
@@ -207,31 +244,37 @@ const ProfilePage = () => {
                 <CardDescription>Update your profile information</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="username" className="text-sm font-medium">
-                      Username
-                    </label>
-                    <Input 
-                      id="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Enter your username"
+                <Form {...profileForm}>
+                  <form onSubmit={profileForm.handleSubmit(handleUpdateProfile)} className="space-y-4">
+                    <FormField
+                      control={profileForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Username</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Enter your username" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="fullName" className="text-sm font-medium">
-                      Full Name
-                    </label>
-                    <Input 
-                      id="fullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Enter your full name"
+                    <FormField
+                      control={profileForm.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Enter your full name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <Button type="submit" className="w-full">Save Changes</Button>
-                </form>
+                    <Button type="submit" className="w-full">Save Changes</Button>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </TabsContent>
@@ -240,59 +283,147 @@ const ProfilePage = () => {
             <Card className="shadow-md bg-card/95 backdrop-blur-sm border-opacity-50 h-full">
               <CardHeader>
                 <CardTitle>Security Settings</CardTitle>
-                <CardDescription>Update your password and security details</CardDescription>
+                <CardDescription>Update your password</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                  <h3 className="text-sm font-semibold">Change Password</h3>
-                  <div className="space-y-2">
-                    <label htmlFor="newPassword" className="text-sm font-medium">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <Input 
-                        id="newPassword"
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
-                      />
-                      <Button 
-                        type="button"
-                        variant="ghost" 
-                        size="sm" 
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                      >
-                        {showNewPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="confirmPassword" className="text-sm font-medium">
-                      Confirm New Password
-                    </label>
-                    <div className="relative">
-                      <Input 
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
-                      />
-                      <Button 
-                        type="button"
-                        variant="ghost" 
-                        size="sm" 
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      >
-                        {showConfirmPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
-                      </Button>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full">Update Password</Button>
-                </form>
+              <CardContent>
+                <Form {...passwordForm}>
+                  <form onSubmit={passwordForm.handleSubmit(handleChangePassword)} className="space-y-4">
+                    <FormField
+                      control={passwordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                {...field}
+                                type={showCurrentPassword ? "text" : "password"}
+                                placeholder="Enter current password" 
+                              />
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="sm" 
+                                className="absolute right-0 top-0 h-full px-3"
+                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                              >
+                                {showCurrentPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                {...field}
+                                type={showNewPassword ? "text" : "password"}
+                                placeholder="Enter new password" 
+                              />
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="sm" 
+                                className="absolute right-0 top-0 h-full px-3"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                              >
+                                {showNewPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                {...field}
+                                type={showConfirmPassword ? "text" : "password"}
+                                placeholder="Confirm new password" 
+                              />
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="sm" 
+                                className="absolute right-0 top-0 h-full px-3"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              >
+                                {showConfirmPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full">Update Password</Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="email" className="flex-1 pt-2">
+            <Card className="shadow-md bg-card/95 backdrop-blur-sm border-opacity-50 h-full">
+              <CardHeader>
+                <CardTitle>Email Settings</CardTitle>
+                <CardDescription>Update your email address</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...emailForm}>
+                  <form onSubmit={emailForm.handleSubmit(handleChangeEmail)} className="space-y-4">
+                    <FormField
+                      control={emailForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              type="email"
+                              placeholder="Enter your email address" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Note: Changing your email will require verification of the new address.
+                    </p>
+                    {currentUser.email && !currentUser.emailVerified && (
+                      <div className="flex items-center gap-2 text-sm text-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+                        <p>Your current email is not verified.</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleSendVerificationEmail}
+                          disabled={isVerificationEmailSending}
+                        >
+                          {isVerificationEmailSending ? "Sending..." : "Send verification email"}
+                        </Button>
+                      </div>
+                    )}
+                    <Button type="submit" className="w-full">Update Email</Button>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </TabsContent>
