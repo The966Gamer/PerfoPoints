@@ -5,8 +5,8 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 
-import { AuthProvider } from "@/context/AuthContext";
 import { DataProvider } from "@/context/DataContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
@@ -24,9 +24,9 @@ import "@/App.css";
 function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="perfopoints-theme">
-      <AuthProvider>
-        <DataProvider>
-          <Router>
+      <Router>
+        <AuthProvider>
+          <DataProvider>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
@@ -39,11 +39,11 @@ function App() {
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Router>
-          <Toaster />
-          <SonnerToaster position="bottom-right" />
-        </DataProvider>
-      </AuthProvider>
+            <Toaster />
+            <SonnerToaster position="bottom-right" />
+          </DataProvider>
+        </AuthProvider>
+      </Router>
     </ThemeProvider>
   );
 }

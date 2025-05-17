@@ -1,3 +1,4 @@
+
 import { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types";
@@ -73,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userData: User = {
             id: profile.id,
             username: profile.username,
-            role: profile.role,
+            role: profile.role as "admin" | "user",
             points: profile.points,
             isBlocked: profile.is_blocked || false,
             avatarUrl: profile.avatar_url,
@@ -110,7 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const userData: User = {
               id: profile.id,
               username: profile.username,
-              role: profile.role,
+              role: profile.role as "admin" | "user",
               points: profile.points,
               isBlocked: profile.is_blocked || false,
               avatarUrl: profile.avatar_url,
@@ -152,7 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const usersData: User[] = data.map(profile => ({
         id: profile.id,
         username: profile.username,
-        role: profile.role,
+        role: profile.role as "admin" | "user",
         points: profile.points,
         isBlocked: profile.is_blocked || false,
         avatarUrl: profile.avatar_url,
@@ -188,7 +189,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Login function
-  const login = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
       
@@ -230,7 +231,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Logout function
-  const logout = async () => {
+  const signOut = async () => {
     try {
       setLoading(true);
       
@@ -253,7 +254,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Register function
-  const register = async (email: string, password: string, username: string, fullName: string) => {
+  const signUp = async (email: string, password: string, username: string, fullName: string) => {
     try {
       setLoading(true);
       
@@ -278,6 +279,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Sign up error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset password function
+  const resetPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      
+      if (error) {
+        toast.error(error.message);
+        throw error;
+      }
+      
+      toast.success("Password reset email sent. Please check your inbox.");
+    } catch (error) {
+      console.error("Reset password error:", error);
       throw error;
     } finally {
       setLoading(false);

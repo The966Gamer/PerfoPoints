@@ -69,3 +69,25 @@ export interface Message {
   read: boolean;
   createdAt: string;
 }
+
+// Map types from database column names to our frontend naming convention
+export interface DbPointRequest {
+  id: string;
+  user_id: string;
+  task_id: string;
+  status: string;
+  created_at: string;
+  updated_at?: string;
+  reviewed_by?: string;
+  photo_url?: string | null;
+  comment?: string | null;
+}
+
+export interface DbReward {
+  id: string;
+  title: string;
+  description: string;
+  points_cost: number;
+  requires_approval: boolean;
+  category?: string;
+}
