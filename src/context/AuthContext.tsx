@@ -4,10 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
 
 // Extended User interface to include Supabase Auth properties
-interface ExtendedUser extends User {
+export interface ExtendedUser extends User {
   app_metadata: any;
   user_metadata: any;
   aud: string;
@@ -20,9 +19,11 @@ interface AuthContextType {
   currentUser: User | null;
   session: any;
   loading: boolean;
+  users: User[];  // Added missing property
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>; // Alias for signOut
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   updateAvatar: (file: File) => Promise<string>;
@@ -35,9 +36,11 @@ const AuthContext = createContext<AuthContextType>({
   currentUser: null,
   session: null,
   loading: true,
+  users: [], // Added missing property
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  logout: async () => {}, // Alias for signOut
   resetPassword: async () => {},
   updateProfile: async () => {},
   updateAvatar: async () => "",
@@ -50,8 +53,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]); // Store all users
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   // Initialize user session on mount
   useEffect(() => {
@@ -86,6 +89,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           };
           
           setCurrentUser(userData);
+
+          // Also load all users if admin
+          if (userData.role === "admin") {
+            await loadAllUsers();
+          }
         }
       } catch (error: any) {
         console.error("Error fetching session:", error);
@@ -125,11 +133,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             };
             
             setCurrentUser(userData);
+
+            // Also load all users if admin
+            if (userData.role === "admin") {
+              await loadAllUsers();
+            }
           } catch (error: any) {
             console.error("Error fetching user profile:", error);
           }
         } else {
           setCurrentUser(null);
+          setUsers([]);
         }
       }
     );
@@ -139,7 +153,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
+
+  // Load all users (for admin usage)
+  const loadAllUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("username");
+      
+      if (error) throw error;
+      
+      // Transform profile data to match User interface
+      const usersData: User[] = data.map(profile => ({
+        id: profile.id,
+        username: profile.username,
+        role: profile.role as "admin" | "user",
+        points: profile.points,
+        isBlocked: profile.is_blocked || false,
+        avatarUrl: profile.avatar_url,
+        createdAt: profile.created_at,
+        email: profile.email,
+        emailVerified: profile.email_verified
+      }));
+      
+      setUsers(usersData);
+    } catch (error: any) {
+      console.error("Error loading users:", error);
+    }
+  };
 
   // Get all users (admin only)
   const getAllUsers = async (): Promise<User[]> => {
@@ -168,6 +211,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         emailVerified: profile.email_verified
       }));
       
+      // Update the users state
+      setUsers(usersData);
+      
       return usersData;
     } catch (error: any) {
       console.error("Error getting users:", error);
@@ -188,6 +234,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("id", userId);
       
       if (error) throw error;
+      
+      // Update local state
+      setUsers(prevUsers => prevUsers.map(user => 
+        user.id === userId ? { ...user, isBlocked } : user
+      ));
       
       toast.success(`User ${isBlocked ? "blocked" : "unblocked"} successfully`);
     } catch (error: any) {
@@ -250,8 +301,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
-      queryClient.clear();
-      navigate("/auth");
+      setUsers([]);
+      navigate("/login");
       toast.success("Signed out successfully");
     } catch (error) {
       console.error("Sign out error:", error);
@@ -260,6 +311,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     }
   };
+
+  // Alias for signOut function 
+  const logout = signOut;
 
   // Register function
   const signUp = async (email: string, password: string, username: string, fullName: string) => {
@@ -406,9 +460,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     currentUser,
     session,
     loading,
+    users,
     signIn,
     signUp,
     signOut,
+    logout,
     resetPassword,
     updateProfile,
     updateAvatar,

@@ -1,7 +1,8 @@
+
 import { ReactNode, createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
-import { Task, Reward, PointRequest, CustomRequest } from "@/types";
+import { Task, Reward, PointRequest, CustomRequest, DbToFrontendMappings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
 // Context type definition
@@ -20,8 +21,11 @@ interface DataContextType {
   redeemReward: (rewardId: string) => Promise<void>;
   createPointRequest: (taskId: string, photoUrl?: string | null, comment?: string | null) => Promise<void>;
   reviewPointRequest: (requestId: string, approved: boolean) => Promise<void>;
-  createCustomRequest: (request: Omit<CustomRequest, "id" | "status" | "userId" | "createdAt">) => Promise<void>;
+  createCustomRequest: (request: Omit<CustomRequest, "id" | "status" | "userId" | "createdAt" | "username">) => Promise<void>;
   reviewCustomRequest: (requestId: string, approved: boolean) => Promise<void>;
+  // Aliases for common actions
+  addTask: (task: Omit<Task, "id" | "createdAt">) => Promise<void>;
+  addReward: (reward: Omit<Reward, "id" | "createdAt">) => Promise<void>;
 }
 
 // Create context
@@ -42,6 +46,8 @@ const DataContext = createContext<DataContextType>({
   reviewPointRequest: async () => {},
   createCustomRequest: async () => {},
   reviewCustomRequest: async () => {},
+  addTask: async () => {},
+  addReward: async () => {},
 });
 
 // Data Provider component
@@ -119,20 +125,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         
         if (requestsError) throw requestsError;
         
-        const formattedRequests = requestsData?.map(req => ({
-          id: req.id,
-          userId: req.user_id,
-          taskId: req.task_id,
-          status: req.status,
-          createdAt: req.created_at,
-          updatedAt: req.updated_at || undefined,
-          reviewedBy: req.reviewed_by || undefined,
-          taskTitle: req.tasks?.title || "Unknown Task",
-          pointValue: req.tasks?.points_value || 0,
-          username: req.profiles?.username || "Unknown User",
-          photoUrl: req.photo_url || null,
-          comment: req.comment || null
-        })) || [];
+        // Safety check for profiles and casting
+        const formattedRequests: PointRequest[] = requestsData?.map(req => {
+          const username = req.profiles ? 
+            (typeof req.profiles === 'object' && 'username' in req.profiles ? req.profiles.username : "Unknown User") :
+            "Unknown User";
+          
+          return {
+            id: req.id,
+            userId: req.user_id,
+            taskId: req.task_id,
+            status: req.status as "pending" | "approved" | "rejected",
+            createdAt: req.created_at,
+            updatedAt: req.updated_at || undefined,
+            reviewedBy: req.reviewed_by || undefined,
+            taskTitle: req.tasks?.title || "Unknown Task",
+            pointValue: req.tasks?.points_value || 0,
+            username: username,
+            photoUrl: req.photo_url || null,
+            comment: req.comment || null
+          };
+        }) || [];
         
         setRequests(formattedRequests);
         
@@ -147,18 +160,25 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         
         if (customRequestsError) throw customRequestsError;
         
-        const formattedCustomRequests = customRequestsData?.map(req => ({
-          id: req.id,
-          userId: req.user_id,
-          title: req.title,
-          description: req.description,
-          type: req.type as "task" | "reward" | "other",
-          status: req.status as "pending" | "approved" | "rejected",
-          createdAt: req.created_at,
-          updatedAt: req.updated_at,
-          reviewedBy: req.reviewed_by,
-          username: req.profiles?.username || "Unknown User"
-        })) || [];
+        // Safety check for profiles and casting
+        const formattedCustomRequests: CustomRequest[] = customRequestsData?.map(req => {
+          const username = req.profiles ? 
+            (typeof req.profiles === 'object' && 'username' in req.profiles ? req.profiles.username : "Unknown User") :
+            "Unknown User";
+          
+          return {
+            id: req.id,
+            userId: req.user_id,
+            title: req.title,
+            description: req.description,
+            type: req.type as "task" | "reward" | "other",
+            status: req.status as "pending" | "approved" | "rejected",
+            createdAt: req.created_at,
+            updatedAt: req.updated_at,
+            reviewedBy: req.reviewed_by,
+            username: username
+          };
+        }) || [];
         
         setCustomRequests(formattedCustomRequests);
         
@@ -212,7 +232,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Only administrators can create tasks");
       }
       
-      const { error } = await supabase.from("tasks").insert(task);
+      // Map task to database schema
+      const dbTask = {
+        title: task.title,
+        description: task.description,
+        points_value: task.pointValue,
+        recurring: task.autoReset,
+        created_by: currentUser.id,
+      };
+      
+      const { error } = await supabase.from("tasks").insert(dbTask);
       
       if (error) throw error;
       
@@ -237,9 +266,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Only administrators can update tasks");
       }
       
+      // Map task to database schema
+      const dbTask: any = {};
+      if (task.title !== undefined) dbTask.title = task.title;
+      if (task.description !== undefined) dbTask.description = task.description;
+      if (task.pointValue !== undefined) dbTask.points_value = task.pointValue;
+      if (task.autoReset !== undefined) dbTask.recurring = task.autoReset;
+      
       const { error } = await supabase
         .from("tasks")
-        .update(task)
+        .update(dbTask)
         .eq("id", id);
       
       if (error) throw error;
@@ -293,7 +329,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Only administrators can create rewards");
       }
       
-      const { error } = await supabase.from("rewards").insert(reward);
+      // Map reward to database schema
+      const dbReward = {
+        title: reward.title,
+        description: reward.description,
+        points_cost: reward.pointCost,
+        requires_approval: reward.approvalKeyRequired,
+      };
+      
+      const { error } = await supabase.from("rewards").insert(dbReward);
       
       if (error) throw error;
       
@@ -318,9 +362,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Only administrators can update rewards");
       }
       
+      // Map reward to database schema
+      const dbReward: any = {};
+      if (reward.title !== undefined) dbReward.title = reward.title;
+      if (reward.description !== undefined) dbReward.description = reward.description;
+      if (reward.pointCost !== undefined) dbReward.points_cost = reward.pointCost;
+      if (reward.approvalKeyRequired !== undefined) dbReward.requires_approval = reward.approvalKeyRequired;
+      
       const { error } = await supabase
         .from("rewards")
-        .update(reward)
+        .update(dbReward)
         .eq("id", id);
       
       if (error) throw error;
@@ -385,23 +436,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       if (!reward) throw new Error("Reward not found");
       
       // Check if user has enough points
-      if (currentUser.points < reward.pointCost) {
-        throw new Error(`Not enough points. You need ${reward.pointCost} points to redeem this reward.`);
+      if (currentUser.points < reward.points_cost) {
+        throw new Error(`Not enough points. You need ${reward.points_cost} points to redeem this reward.`);
       }
       
-      // Create redemption record
-      const { error: redemptionError } = await supabase
-        .from("reward_redemptions")
-        .insert({
-          userId: currentUser.id,
-          rewardId: rewardId,
-          pointsCost: reward.pointCost
-        });
+      // Use a transaction or batch operations
+      const newPoints = currentUser.points - reward.points_cost;
       
-      if (redemptionError) throw redemptionError;
-      
-      // Update user's points
-      const newPoints = currentUser.points - reward.pointCost;
+      // First update user's points
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ points: newPoints })
@@ -409,9 +451,23 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       
       if (updateError) throw updateError;
       
+      // Then record the redemption 
+      // Note: if your DB schema has a table for redemptions, use that instead
+      const { error: historyError } = await supabase
+        .from("points_history")
+        .insert({
+          user_id: currentUser.id,
+          points: -reward.points_cost, // Negative points since it's a reduction
+          new_total: newPoints,
+          reason: `Redeemed reward: ${reward.title}`,
+          type: "redemption"
+        });
+      
+      if (historyError) throw historyError;
+      
       toast({
         title: "Reward redeemed",
-        description: `You have successfully redeemed ${reward.title} for ${reward.pointCost} points`,
+        description: `You have successfully redeemed ${reward.title} for ${reward.points_cost} points`,
       });
     } catch (error: any) {
       toast({
@@ -532,7 +588,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Create custom request
-  const createCustomRequest = async (request: Omit<CustomRequest, "id" | "status" | "userId" | "createdAt">) => {
+  const createCustomRequest = async (request: Omit<CustomRequest, "id" | "status" | "userId" | "createdAt" | "username">) => {
     try {
       if (!currentUser) {
         throw new Error("You must be logged in to create custom requests");
@@ -598,6 +654,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Alias methods
+  const addTask = createTask;
+  const addReward = createReward;
+
   const value = {
     tasks,
     rewards,
@@ -615,6 +675,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     reviewPointRequest,
     createCustomRequest,
     reviewCustomRequest,
+    // Aliases
+    addTask,
+    addReward,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

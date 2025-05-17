@@ -72,6 +72,7 @@ export interface Message {
   createdAt: string;
 }
 
+// Database mapping types
 // Map types from database column names to our frontend naming convention
 export interface DbPointRequest {
   id: string;
@@ -92,4 +93,54 @@ export interface DbReward {
   points_cost: number;
   requires_approval: boolean;
   category?: string;
+}
+
+// Database to frontend mapping interfaces
+export interface DbToFrontendMappings {
+  // Task database mapping
+  DbTask: {
+    id: string;
+    title: string;
+    description: string;
+    points_value: number;
+    recurring: boolean;
+    created_at: string;
+    created_by: string;
+  };
+  
+  // Profile database mapping
+  DbProfile: {
+    id: string;
+    username: string;
+    full_name: string;
+    email?: string;
+    email_verified: boolean;
+    role: string;
+    points: number;
+    is_blocked: boolean;
+    avatar_url?: string;
+    created_at: string;
+  };
+  
+  // Custom request database mapping
+  DbCustomRequest: {
+    id: string;
+    user_id: string;
+    title: string;
+    description?: string;
+    type: string;
+    status: string;
+    created_at: string;
+    updated_at?: string;
+    reviewed_by?: string;
+  };
+  
+  // Type for database redemption
+  DbRedemption: {
+    id: string;
+    user_id: string;
+    reward_id: string;
+    points_cost: number;
+    created_at: string;
+  };
 }
