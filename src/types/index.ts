@@ -9,6 +9,9 @@ export interface User {
   createdAt: string;
   email?: string;
   emailVerified?: boolean;
+  // Add these fields to align with the database structure
+  created_at?: string;
+  email_verified?: boolean;
 }
 
 export interface Task {
@@ -20,6 +23,8 @@ export interface Task {
   autoReset: boolean;
   createdAt: string;
   createdBy: string;
+  category?: string;
+  status?: 'active' | 'inactive';
 }
 
 export interface Reward {
@@ -31,6 +36,7 @@ export interface Reward {
   approvalKeyRequired: boolean;
   createdAt: string;
   createdBy: string;
+  category?: string;
 }
 
 // Point Request type
@@ -143,4 +149,37 @@ export interface DbToFrontendMappings {
     points_cost: number;
     created_at: string;
   };
+}
+
+// Extended user interface for admin functionality
+export interface ExtendedUser extends User {
+  app_metadata?: any;
+  user_metadata?: any;
+  aud?: string;
+}
+
+// Achievement interface for gamification
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  pointsRequired: number;
+  achieved: boolean;
+}
+
+// Key type for special features
+export interface Key {
+  id: string;
+  userId: string;
+  keyType: 'gold' | 'silver' | 'bronze';
+  quantity: number;
+}
+
+// Daily streak tracking
+export interface Streak {
+  userId: string;
+  currentStreak: number;
+  lastActivity: string;
+  longestStreak: number;
 }

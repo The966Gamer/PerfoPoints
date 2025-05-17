@@ -19,6 +19,7 @@ import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
 import AuthCallback from "@/pages/AuthCallback";
 import Login from "@/pages/Login";
+import AchievementsPage from "@/pages/AchievementsPage";
 
 import "@/App.css";
 
@@ -40,6 +41,7 @@ function App() {
                 <Route path="/rewards" element={<RewardsPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/requests" element={<RequestsPage />} />
+                <Route path="/achievements" element={<AchievementsPage />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/login" element={<Login />} />

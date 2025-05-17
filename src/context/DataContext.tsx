@@ -1,4 +1,3 @@
-
 import { ReactNode, createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
@@ -88,6 +87,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
           autoReset: task.recurring || false,
           createdAt: task.created_at,
           createdBy: task.created_by || "",
+          category: task.category,
+          status: 'active'
         }));
         
         setTasks(mappedTasks);
@@ -127,9 +128,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         
         // Safety check for profiles and casting
         const formattedRequests: PointRequest[] = requestsData?.map(req => {
-          const username = req.profiles ? 
-            (typeof req.profiles === 'object' && 'username' in req.profiles ? req.profiles.username : "Unknown User") :
-            "Unknown User";
+          // Handle potentially null profiles safely
+          const username = req.profiles && typeof req.profiles === 'object' && 'username' in req.profiles 
+            ? (req.profiles.username as string) || "Unknown User" 
+            : "Unknown User";
           
           return {
             id: req.id,
@@ -162,9 +164,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         
         // Safety check for profiles and casting
         const formattedCustomRequests: CustomRequest[] = customRequestsData?.map(req => {
-          const username = req.profiles ? 
-            (typeof req.profiles === 'object' && 'username' in req.profiles ? req.profiles.username : "Unknown User") :
-            "Unknown User";
+          // Handle potentially null profiles safely
+          const username = req.profiles && typeof req.profiles === 'object' && 'username' in req.profiles 
+            ? (req.profiles.username as string) || "Unknown User"  
+            : "Unknown User";
+          
+          // Handle the reviewed_by property safely
+          const reviewedBy = 'reviewed_by' in req ? (req as any).reviewed_by : undefined;
           
           return {
             id: req.id,
@@ -175,7 +181,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             status: req.status as "pending" | "approved" | "rejected",
             createdAt: req.created_at,
             updatedAt: req.updated_at,
-            reviewedBy: req.reviewed_by,
+            reviewedBy: reviewedBy,
             username: username
           };
         }) || [];
@@ -239,6 +245,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         points_value: task.pointValue,
         recurring: task.autoReset,
         created_by: currentUser.id,
+        category: task.category,
+        status: 'active'
       };
       
       const { error } = await supabase.from("tasks").insert(dbTask);
@@ -335,6 +343,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         description: reward.description,
         points_cost: reward.pointCost,
         requires_approval: reward.approvalKeyRequired,
+        category: reward.category,
+        created_by: currentUser.id
       };
       
       const { error } = await supabase.from("rewards").insert(dbReward);

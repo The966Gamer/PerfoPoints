@@ -1,333 +1,324 @@
+
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useAuth } from "@/context/AuthContext";
-import { RewardCard } from "@/components/user/RewardCard";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, Plus, Settings } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "@/components/ui/use-toast";
-
-// Define request type explicitly to fix type error
-type RequestType = 'reward' | 'task' | 'other';
+import { 
+  Gift, 
+  Plus, 
+  Search, 
+  SlidersHorizontal,
+  Sparkles
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { RewardCard } from "@/components/user/RewardCard";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 const RewardsPage = () => {
   const { currentUser } = useAuth();
-  const { rewards, addReward, createCustomRequest } = useData();
+  const { rewards, addReward } = useData();
   const [isAdding, setIsAdding] = useState(false);
-  const [isRequesting, setIsRequesting] = useState(false);
-  const navigate = useNavigate();
-  
-  // Form state for creating rewards
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("cost-low");
+
+  // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [pointCost, setPointCost] = useState(50);
-  const [approvalKeyRequired, setApprovalKeyRequired] = useState(true);
-  
-  // Form state for requesting new rewards/items
-  const [requestTitle, setRequestTitle] = useState("");
-  const [requestDescription, setRequestDescription] = useState("");
-  const [requestType, setRequestType] = useState<RequestType>("reward");
-  
+  const [approvalKeyRequired, setApprovalKeyRequired] = useState(false);
+  const [category, setCategory] = useState("general");
+
   const isAdmin = currentUser?.role === "admin";
-  
+
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setPointCost(50);
-    setApprovalKeyRequired(true);
+    setApprovalKeyRequired(false);
+    setCategory("general");
   };
-  
-  const resetRequestForm = () => {
-    setRequestTitle("");
-    setRequestDescription("");
-    setRequestType("reward");
-  };
-  
+
   const handleAddReward = async () => {
     if (!title || !description || pointCost <= 0) return;
-    
+
     await addReward({
       title,
       description,
       pointCost,
-      approvalKeyRequired
+      approvalKeyRequired,
+      createdBy: currentUser?.id || "",
+      category
     });
-    
+
     resetForm();
     setIsAdding(false);
   };
-  
-  const handleCreateRequest = async () => {
-    if (!requestTitle || !requestDescription) return;
-    
-    try {
-      await createCustomRequest({
-        title: requestTitle,
-        description: requestDescription,
-        type: requestType,
-      });
-      
-      toast({
-        title: "Request submitted!",
-        description: "Your request has been sent to the admins.",
-      });
-      resetRequestForm();
-      setIsRequesting(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit request. Try again later.",
-        variant: "destructive",
-      });
+
+  // Get all unique categories
+  const categories = ["all", ...new Set(rewards.map(reward => reward.category || "general"))];
+
+  // Filter and sort rewards
+  const filteredRewards = rewards.filter(reward => {
+    const matchesSearch = reward.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         reward.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || reward.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Sort rewards based on selected option
+  const sortedRewards = [...filteredRewards].sort((a, b) => {
+    if (sortBy === "cost-high") {
+      return b.pointCost - a.pointCost;
+    } else if (sortBy === "cost-low") {
+      return a.pointCost - b.pointCost;
+    } else if (sortBy === "recent") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else if (sortBy === "alphabetical") {
+      return a.title.localeCompare(b.title);
     }
-  };
-  
+    return 0;
+  });
+
+  const canAfford = (cost: number) => currentUser && currentUser.points >= cost;
+  const affordableRewards = rewards.filter(reward => canAfford(reward.pointCost));
+
   return (
     <PageLayout requireAuth title="Rewards">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          
-          <div className="flex space-x-2">
-            <Dialog open={isRequesting} onOpenChange={setIsRequesting}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  Request New
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Request Something New</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="requestType">Request Type</Label>
-                    <div className="flex gap-4">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          id="reward"
-                          name="requestType"
-                          checked={requestType === "reward"}
-                          onChange={() => setRequestType("reward")}
-                          className="mr-2"
-                        />
-                        <Label htmlFor="reward">Reward</Label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          id="task"
-                          name="requestType"
-                          checked={requestType === "task"}
-                          onChange={() => setRequestType("task")}
-                          className="mr-2"
-                        />
-                        <Label htmlFor="task">Task</Label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          id="other"
-                          name="requestType"
-                          checked={requestType === "other"}
-                          onChange={() => setRequestType("other")}
-                          className="mr-2"
-                        />
-                        <Label htmlFor="other">Other</Label>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="requestTitle">Title</Label>
-                    <Input
-                      id="requestTitle"
-                      value={requestTitle}
-                      onChange={(e) => setRequestTitle(e.target.value)}
-                      placeholder="What would you like?"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="requestDescription">Description</Label>
-                    <Textarea
-                      id="requestDescription"
-                      value={requestDescription}
-                      onChange={(e) => setRequestDescription(e.target.value)}
-                      placeholder="Tell us more about it..."
-                      rows={3}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsRequesting(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateRequest}>Submit Request</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Rewards</h1>
+            <p className="text-muted-foreground">
+              Spend your points on exciting rewards
+            </p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setIsAdding(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Reward
+            </Button>
+          )}
+        </div>
 
-            {isAdmin && (
-              <Dialog open={isAdding} onOpenChange={setIsAdding}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Reward
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Reward</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Reward title"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Reward description"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="pointCost">Point Cost</Label>
-                      <Input
-                        id="pointCost"
-                        type="number"
-                        min={1}
-                        value={pointCost}
-                        onChange={(e) => setPointCost(Number(e.target.value))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="approvalRequired">Require admin approval</Label>
-                      <Switch
-                        id="approvalRequired"
-                        checked={approvalKeyRequired}
-                        onCheckedChange={setApprovalKeyRequired}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAdding(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleAddReward}>Create Reward</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-[3fr_1fr] gap-6">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <div className="relative w-full">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search rewards..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 items-center w-full sm:w-auto">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cost-low">Lowest Cost</SelectItem>
+                    <SelectItem value="cost-high">Highest Cost</SelectItem>
+                    <SelectItem value="recent">Most Recent</SelectItem>
+                    <SelectItem value="alphabetical">Alphabetical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Rewards Settings</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="approvalKey">Default approval key required</Label>
-                    <Switch
-                      id="approvalKey"
-                      defaultChecked={true}
-                    />
+            <Tabs defaultValue="all" value={categoryFilter} onValueChange={setCategoryFilter}>
+              <TabsList className="mb-4 overflow-auto">
+                {categories.map(cat => (
+                  <TabsTrigger key={cat} value={cat} className="capitalize">
+                    {cat}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              <TabsContent value={categoryFilter}>
+                {sortedRewards.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                    {sortedRewards.map((reward) => (
+                      <RewardCard key={reward.id} reward={reward} />
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="showCompleted">Show redeemed rewards</Label>
-                    <Switch
-                      id="showCompleted"
-                      defaultChecked={true}
-                    />
+                ) : (
+                  <div className="text-center py-16">
+                    <h3 className="text-lg font-medium mb-2">No rewards found</h3>
+                    <p className="text-muted-foreground">
+                      {searchTerm ? "Try adjusting your search or filters." : 
+                        isAdmin ? "Click the 'Add Reward' button to create your first reward." 
+                          : "There are no rewards available yet. Check back later!"}
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="enableGifting">Enable point gifting</Label>
-                    <Switch
-                      id="enableGifting"
-                      defaultChecked={true}
-                    />
-                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Your Points</CardTitle>
+                  <Sparkles className="h-4 w-4 text-yellow-400" />
                 </div>
-                <DialogFooter>
-                  <Button>Save Settings</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{currentUser?.points || 0}</div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {affordableRewards.length === 0 
+                    ? "Keep earning to unlock rewards!" 
+                    : `You can afford ${affordableRewards.length} rewards`}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Reward Categories</CardTitle>
+                <CardDescription>Filter rewards by category</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {categories.filter(cat => cat !== "all").map(cat => (
+                    <Badge 
+                      key={cat} 
+                      variant={categoryFilter === cat ? "default" : "outline"}
+                      className="capitalize cursor-pointer"
+                      onClick={() => setCategoryFilter(cat)}
+                    >
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Featured Rewards</CardTitle>
+                <CardDescription>Special rewards to aim for</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {rewards
+                    .sort(() => Math.random() - 0.5)
+                    .slice(0, 3)
+                    .map(reward => (
+                      <li key={reward.id} className="flex justify-between items-center">
+                        <span className="text-sm truncate max-w-[180px]">{reward.title}</span>
+                        <Badge variant="secondary">
+                          <Gift className="h-3 w-3 mr-1" />
+                          {reward.pointCost}
+                        </Badge>
+                      </li>
+                    ))
+                  }
+                </ul>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="all">All Rewards</TabsTrigger>
-            <TabsTrigger value="available">Available</TabsTrigger>
-            <TabsTrigger value="redeemed">Redeemed</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all">
-            {rewards.length === 0 ? (
-              <div className="text-center py-16">
-                <h3 className="text-lg font-medium mb-2">No rewards available</h3>
-                <p className="text-muted-foreground">
-                  {isAdmin 
-                    ? "Click the 'Add Reward' button to create your first reward." 
-                    : "There are no rewards available yet. Check back later!"}
-                </p>
+        {/* Add Reward Dialog */}
+        <Dialog open={isAdding} onOpenChange={setIsAdding}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create New Reward</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Reward title"
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {rewards.map((reward) => (
-                  <RewardCard key={reward.id} reward={reward} />
-                ))}
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Reward description"
+                  rows={3}
+                />
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="available">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rewards.length > 0 ? rewards.map((reward) => (
-                <RewardCard key={reward.id} reward={reward} />
-              )) : (
-                <div className="col-span-full text-center py-16">
-                  <h3 className="text-lg font-medium mb-2">No rewards available</h3>
-                  <p className="text-muted-foreground">
-                    Check back later for new rewards!
-                  </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="pointCost">Point Cost</Label>
+                  <Input
+                    id="pointCost"
+                    type="number"
+                    min={1}
+                    value={pointCost}
+                    onChange={(e) => setPointCost(Number(e.target.value))}
+                  />
                 </div>
-              )}
+                <div className="grid gap-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="electronics">Electronics</SelectItem>
+                      <SelectItem value="activities">Activities</SelectItem>
+                      <SelectItem value="toys">Toys</SelectItem>
+                      <SelectItem value="privileges">Privileges</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="approval">Requires Approval</Label>
+                <Switch
+                  id="approval"
+                  checked={approvalKeyRequired}
+                  onCheckedChange={setApprovalKeyRequired}
+                />
+              </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="redeemed">
-            <div className="text-center py-16">
-              <h3 className="text-lg font-medium mb-2">No redeemed rewards</h3>
-              <p className="text-muted-foreground">
-                Rewards you've redeemed will appear here.
-              </p>
-            </div>
-          </TabsContent>
-        </Tabs>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAdding(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddReward}>Create Reward</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </PageLayout>
   );
