@@ -1,32 +1,38 @@
 
+import { useState } from "react";
+import { useData } from "@/context/DataContext";
 import { PageLayout } from "@/components/layout/PageLayout";
-import RequestList from "@/components/admin/RequestList";
-import { useTheme } from "next-themes";
-import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RequestList } from "@/components/admin/RequestList";
 
 const RequestsPage = () => {
-  const { theme } = useTheme();
+  const { pointRequests, customRequests, reviewPointRequest, reviewCustomRequest } = useData();
+  const [activeTab, setActiveTab] = useState("point-requests");
+
+  const pendingPointRequests = pointRequests.filter(req => req.status === "pending");
+  const completedPointRequests = pointRequests.filter(req => req.status !== "pending");
+  
+  const pendingCustomRequests = customRequests.filter(req => req.status === "pending");
+  const completedCustomRequests = customRequests.filter(req => req.status !== "pending");
 
   return (
-    <PageLayout requireAuth requireAdmin title="Point Requests">
-      <div className="space-y-6 mx-auto max-w-7xl px-4">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Task Completion Requests
-        </h1>
-        <p className="text-muted-foreground">
-          Review and manage task completion requests from users.
-        </p>
+    <PageLayout requireAdmin title="Manage Requests">
+      <Tabs defaultValue="point-requests" onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="point-requests">Point Requests</TabsTrigger>
+          <TabsTrigger value="custom-requests">Custom Requests</TabsTrigger>
+        </TabsList>
         
-        <Card className={`
-          p-6 rounded-xl 
-          ${theme === 'dark' 
-            ? 'bg-gray-800/60 backdrop-blur border-gray-700' 
-            : 'bg-white/80 backdrop-blur shadow-md'
-          }
-        `}>
-          <RequestList />
-        </Card>
-      </div>
+        <TabsContent value="point-requests" className="space-y-6 mt-6">
+          {/* Point requests content */}
+          {/* Use imported RequestList component here */}
+        </TabsContent>
+        
+        <TabsContent value="custom-requests" className="space-y-6 mt-6">
+          {/* Custom requests content */}
+          {/* Use imported RequestList component here */}
+        </TabsContent>
+      </Tabs>
     </PageLayout>
   );
 };
