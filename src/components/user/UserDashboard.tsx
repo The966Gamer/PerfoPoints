@@ -8,7 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCard } from "./TaskCard";
 import { RewardCard } from "./RewardCard";
 import { Leaderboard } from "./Leaderboard";
-import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight } from "lucide-react";
+import { UserStats } from "./UserStats";
+import { PremiumFeatures } from "./PremiumFeatures";
+import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
@@ -29,6 +31,15 @@ export function UserDashboard() {
   const affordableRewards = rewards
     .filter(reward => reward.pointCost <= currentUser.points)
     .slice(0, 3);
+  
+  // Generate some premium rewards
+  const premiumRewards = rewards
+    .filter(reward => reward.pointCost > currentUser.points * 0.8)
+    .slice(0, 2)
+    .map(reward => ({
+      ...reward,
+      category: "premium",
+    }));
 
   return (
     <div className="grid gap-6">
@@ -103,13 +114,19 @@ export function UserDashboard() {
         </Card>
       </div>
 
+      {/* New detailed User Stats */}
+      <UserStats />
+
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="tasks" className="flex items-center gap-2">
             <CalendarCheck className="h-4 w-4" /> Tasks
           </TabsTrigger>
           <TabsTrigger value="rewards" className="flex items-center gap-2">
             <Gift className="h-4 w-4" /> Rewards
+          </TabsTrigger>
+          <TabsTrigger value="premium" className="flex items-center gap-2">
+            <Crown className="h-4 w-4" /> Premium
           </TabsTrigger>
           <TabsTrigger value="leaderboard" className="flex items-center gap-2">
             <Trophy className="h-4 w-4" /> Leaderboard
@@ -158,10 +175,75 @@ export function UserDashboard() {
           </div>
         </TabsContent>
         
+        <TabsContent value="premium" className="mt-6">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium flex items-center">
+                <Crown className="h-5 w-5 mr-2 text-yellow-500" />
+                Premium Rewards
+              </h3>
+              <Button variant="secondary" size="sm" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/30">
+                View Premium Plan
+              </Button>
+            </div>
+            
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {premiumRewards.map(reward => (
+                <RewardCard key={reward.id} reward={reward} isPremium={true} />
+              ))}
+              <Card className="reward-card bg-gradient-to-br from-yellow-500/10 to-yellow-100/10 dark:from-yellow-500/10 dark:to-yellow-900/30 border-yellow-500/20 flex flex-col items-center justify-center p-6 text-center">
+                <Crown className="h-10 w-10 text-yellow-500 mb-3" />
+                <h3 className="font-medium text-lg mb-2">Unlock Premium</h3>
+                <p className="text-sm text-muted-foreground mb-4">Get access to exclusive rewards and premium features</p>
+                <Button variant="secondary" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/30">
+                  Upgrade Now
+                </Button>
+              </Card>
+            </div>
+            
+            {/* Premium Features Section */}
+            <PremiumFeatures />
+          </div>
+        </TabsContent>
+        
         <TabsContent value="leaderboard" className="mt-6">
           <Leaderboard />
         </TabsContent>
       </Tabs>
+
+      {/* Weekly Calendar Preview */}
+      <Card className="glass-card">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center">
+              <Calendar className="h-5 w-5 mr-2 text-primary" />
+              Weekly Task Planner
+            </CardTitle>
+            <Button variant="outline" size="sm">Full Calendar</Button>
+          </div>
+          <CardDescription>Plan your week with these upcoming tasks</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-7 gap-2">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+              <div key={day} className="text-center">
+                <div className="font-medium">{day}</div>
+                <div className="mt-2 h-20 border rounded-md bg-background/50 flex items-center justify-center">
+                  <div className="text-xs text-muted-foreground">
+                    {day === 'Wed' || day === 'Fri' ? (
+                      <div className="bg-primary/10 p-1 rounded text-primary">1 task</div>
+                    ) : day === 'Sat' ? (
+                      <div className="bg-yellow-500/10 p-1 rounded text-yellow-600 dark:text-yellow-400">2 tasks</div>
+                    ) : (
+                      'No tasks'
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

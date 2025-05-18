@@ -1,503 +1,279 @@
 
-import { useState } from "react";
 import { useData } from "@/context/DataContext";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDistanceToNow } from "date-fns";
-import { CheckCircle, Download, ExternalLink, ImageIcon, Loader2, XCircle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "next-themes";
-import { AnimatePresence, motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+import { Check, X, Clock, Image, FileText, Calendar, CheckCircle2, XCircle } from "lucide-react";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
-interface RequestListProps {
-  limit?: number;
-}
-
-const RequestList = ({ limit }: RequestListProps) => {
-  const { requests, reviewPointRequest, customRequests, reviewCustomRequest } = useData();
-  const { toast } = useToast();
-  const { theme } = useTheme();
+export function RequestList() {
+  const { pointRequests: requests, reviewPointRequest, reviewCustomRequest, customRequests } = useData();
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
-  const [processing, setProcessing] = useState<string | null>(null);
-  const [showProofDialog, setShowProofDialog] = useState(false);
-  const [currentProof, setCurrentProof] = useState<{
-    id: string;
-    imageUrl?: string | null;
-    comment?: string | null;
-    username: string;
-    taskTitle: string;
-  } | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
-  const [imageLoadError, setImageLoadError] = useState(false);
-  const [viewingFullscreen, setViewingFullscreen] = useState(false);
-
-  const handleApproveRequest = async (requestId: string) => {
+  // Fixed ReviewPointRequest to use the correct arguments and types
+  const handleApproveRequest = async (request: any) => {
     try {
-      setProcessing(requestId);
-      await reviewPointRequest(requestId, true);
-      toast({
-        title: "Request approved",
-        description: "Points have been awarded to the user"
-      });
+      // Ensure we have the correct parameters for reviewPointRequest
+      const result = await reviewPointRequest(
+        request.id,
+        "approved",
+        request.userId,
+        request.taskId,
+        request.pointValue || 0
+      );
+      
+      if (result) {
+        toast.success("Request approved successfully!");
+      }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to approve request",
-        variant: "destructive"
-      });
-    } finally {
-      setProcessing(null);
+      toast.error("Failed to approve request");
     }
   };
-
-  const handleDenyRequest = async (requestId: string) => {
+  
+  const handleRejectRequest = async (request: any) => {
     try {
-      setProcessing(requestId);
-      await reviewPointRequest(requestId, false);
-      toast({
-        title: "Request denied",
-        description: "The request has been denied"
-      });
-    } finally {
-      setProcessing(null);
+      // Ensure we have the correct parameters for reviewPointRequest
+      const result = await reviewPointRequest(
+        request.id,
+        "rejected",
+        request.userId,
+        request.taskId,
+        request.pointValue || 0
+      );
+      
+      if (result) {
+        toast.success("Request rejected successfully!");
+      }
+    } catch (error) {
+      toast.error("Failed to reject request");
     }
   };
-
+  
   const handleApproveCustomRequest = async (requestId: string) => {
     try {
-      setProcessing(requestId);
-      await reviewCustomRequest(requestId, true);
-      toast({
-        title: "Request approved",
-        description: "Custom request has been approved"
-      });
-    } finally {
-      setProcessing(null);
+      // Fixed: use "approved" string instead of boolean
+      await reviewCustomRequest(requestId, "approved");
+      toast.success("Custom request approved successfully!");
+    } catch (error) {
+      toast.error("Failed to approve custom request");
     }
   };
-
-  const handleDenyCustomRequest = async (requestId: string) => {
+  
+  const handleRejectCustomRequest = async (requestId: string) => {
     try {
-      setProcessing(requestId);
-      await reviewCustomRequest(requestId, false);
-      toast({
-        title: "Request denied",
-        description: "Custom request has been denied"
-      });
-    } finally {
-      setProcessing(null);
+      // Fixed: use "rejected" string instead of boolean
+      await reviewCustomRequest(requestId, "rejected");
+      toast.success("Custom request rejected successfully!");
+    } catch (error) {
+      toast.error("Failed to reject custom request");
     }
   };
 
-  const openProofDialog = (request: any) => {
-    setImageLoading(true);
-    setImageLoadError(false);
-    setCurrentProof({
-      id: request.id,
-      imageUrl: request.photoUrl,
-      comment: request.comment,
-      username: request.username,
-      taskTitle: request.taskTitle
-    });
-    setShowProofDialog(true);
+  const openImagePreview = (url: string) => {
+    setImagePreview(url);
   };
-
-  const downloadImage = () => {
-    if (currentProof?.imageUrl) {
-      // Open image in new tab
-      window.open(currentProof.imageUrl, '_blank');
-    }
-  };
-
-  const pendingRequests = requests.filter(
-    (request) => request.status === "pending"
-  );
-  
-  const displayRequests = limit ? pendingRequests.slice(0, limit) : pendingRequests;
-  
-  const pendingCustomRequests = customRequests.filter(
-    (request) => request.status === "pending"
-  );
-  
-  const displayCustomRequests = limit ? pendingCustomRequests.slice(0, limit) : pendingCustomRequests;
 
   return (
-    <div>
-      <Tabs defaultValue="points" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="points" className="relative">
-            Point Requests
-            {pendingRequests.length > 0 && (
-              <Badge variant="destructive" className="ml-2 absolute -top-2 -right-2 h-5 min-w-[20px] flex items-center justify-center">
-                {pendingRequests.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="custom" className="relative">
-            Custom Requests
-            {pendingCustomRequests.length > 0 && (
-              <Badge variant="destructive" className="ml-2 absolute -top-2 -right-2 h-5 min-w-[20px] flex items-center justify-center">
-                {pendingCustomRequests.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="points">
-          <h2 className="text-xl font-semibold mb-4">Task Completion Requests</h2>
-          {displayRequests.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">
-              <ImageIcon className="mx-auto h-12 w-12 opacity-20 mb-2" />
-              <p>No pending point requests</p>
-              <p className="text-sm mt-1">All caught up! No requests need review.</p>
-            </div>
-          ) : (
-            <div className="rounded-lg overflow-hidden border">
-              <Table>
-                <TableHeader className={theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Task</TableHead>
-                    <TableHead className="text-right">Points</TableHead>
-                    <TableHead>Proof</TableHead>
-                    <TableHead>Requested</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence>
-                    {displayRequests.map((request) => (
-                      <motion.tr
-                        key={request.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className={`
-                          ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}
-                          border-b border-gray-200 dark:border-gray-700 last:border-0
-                        `}
-                      >
-                        <TableCell className="font-medium">{request.username}</TableCell>
-                        <TableCell>{request.taskTitle}</TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="outline" className="font-mono">
-                            {request.pointValue}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {(request.photoUrl || request.comment) ? (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="flex items-center gap-1 text-primary"
-                              onClick={() => openProofDialog(request)}
-                            >
-                              {request.photoUrl ? (
-                                <ImageIcon size={16} className="text-primary" />
-                              ) : (
-                                <ImageIcon size={16} className="text-muted-foreground" />
-                              )}
-                              View Proof
-                            </Button>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">None</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(request.createdAt), {
-                              addSuffix: true,
-                            })}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                              onClick={() => handleDenyRequest(request.id)}
-                              disabled={processing === request.id}
-                            >
-                              <XCircle className="h-5 w-5" />
-                              <span className="sr-only">Deny</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-green-600 dark:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
-                              onClick={() => handleApproveRequest(request.id)}
-                              disabled={processing === request.id}
-                            >
-                              {processing === request.id ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-5 w-5" />
-                              )}
-                              <span className="sr-only">Approve</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="custom">
-          <h2 className="text-xl font-semibold mb-4">Custom Requests</h2>
-          {displayCustomRequests.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">
-              <div className="mx-auto h-12 w-12 opacity-20 mb-2 rounded-full border-2 border-dashed flex items-center justify-center">
-                <span className="text-xl">+</span>
-              </div>
-              <p>No pending custom requests</p>
-              <p className="text-sm mt-1">All custom requests have been reviewed.</p>
-            </div>
-          ) : (
-            <div className="rounded-lg overflow-hidden border">
-              <Table>
-                <TableHeader className={theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Requested</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence>
-                    {displayCustomRequests.map((request) => (
-                      <motion.tr
-                        key={request.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className={`
-                          ${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}
-                          border-b border-gray-200 dark:border-gray-700 last:border-0
-                        `}
-                      >
-                        <TableCell className="font-medium">{request.username}</TableCell>
-                        <TableCell className="capitalize">
-                          <Badge variant={request.type === 'task' ? 'default' : 'secondary'}>
-                            {request.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{request.title}</div>
-                            <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                              {request.description}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(request.createdAt), {
-                              addSuffix: true,
-                            })}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                              onClick={() => handleDenyCustomRequest(request.id)}
-                              disabled={processing === request.id}
-                            >
-                              <XCircle className="h-5 w-5" />
-                              <span className="sr-only">Deny</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon" 
-                              className="text-green-600 dark:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
-                              onClick={() => handleApproveCustomRequest(request.id)}
-                              disabled={processing === request.id}
-                            >
-                              {processing === request.id ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-5 w-5" />
-                              )}
-                              <span className="sr-only">Approve</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* Dialog for showing proof */}
-      <Dialog open={showProofDialog} onOpenChange={setShowProofDialog}>
-        <DialogContent className={`sm:max-w-2xl ${theme === 'dark' ? 'bg-gray-800/95 border-gray-700' : 'bg-white/95'}`}>
-          <DialogHeader>
-            <DialogTitle>Task Completion Proof</DialogTitle>
-            <DialogDescription>
-              Submitted by <span className="font-medium">{currentProof?.username}</span> for task: <span className="font-medium">{currentProof?.taskTitle}</span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {currentProof?.imageUrl && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Photo Proof</h4>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-2 text-xs"
-                      onClick={() => setViewingFullscreen(!viewingFullscreen)}
-                    >
-                      <ExternalLink size={14} className="mr-1" />
-                      {viewingFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-2 text-xs"
-                      onClick={downloadImage}
-                    >
-                      <Download size={14} className="mr-1" />
-                      Download
-                    </Button>
+    <Tabs defaultValue="points" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="points">
+          <Badge variant="outline" className="mr-2">{
+            requests.filter(req => req.status === "pending").length
+          }</Badge>
+          Point Requests
+        </TabsTrigger>
+        <TabsTrigger value="custom">
+          <Badge variant="outline" className="mr-2">{
+            customRequests.filter(req => req.status === "pending").length
+          }</Badge>
+          Custom Requests
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="points" className="mt-6">
+        <h3 className="text-xl font-bold mb-4 flex items-center">
+          <CheckCircle2 className="h-5 w-5 mr-2" /> 
+          Point Requests
+        </h3>
+        
+        {requests.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>No Requests</CardTitle>
+              <CardDescription>There are no pending point requests at this time.</CardDescription>
+            </CardHeader>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {requests.filter(req => req.status === "pending").map((request) => (
+              <Card key={request.id} className="overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>{request.username?.charAt(0) || "U"}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-base">{request.username}</CardTitle>
+                        <CardDescription className="text-xs mt-1 flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {format(new Date(request.createdAt), "MMM d, yyyy")}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20">
+                      +{request.pointValue} points
+                    </Badge>
                   </div>
-                </div>
+                </CardHeader>
                 
-                <div className={`
-                  border rounded-md overflow-hidden bg-muted/30
-                  ${viewingFullscreen ? 'max-h-[70vh]' : 'max-h-[400px]'}
-                `}>
-                  {imageLoading && (
-                    <div className="flex items-center justify-center h-64 bg-muted/30">
-                      <Loader2 className="h-8 w-8 animate-spin opacity-70" />
+                <CardContent className="pb-3">
+                  <div className="mb-3">
+                    <h4 className="font-medium">{request.taskTitle}</h4>
+                    {request.comment && (
+                      <div className="mt-2 text-sm text-muted-foreground border-l-2 border-muted pl-3 italic">
+                        {request.comment}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {request.photoUrl && (
+                    <div className="mt-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-1"
+                        onClick={() => openImagePreview(request.photoUrl as string)}
+                      >
+                        <Image className="h-4 w-4" />
+                        View Photo Proof
+                      </Button>
                     </div>
                   )}
                   
-                  {imageLoadError ? (
-                    <div className="flex flex-col items-center justify-center h-64 bg-muted/30">
-                      <ImageIcon size={48} className="opacity-20 mb-2" />
-                      <p className="text-sm text-muted-foreground">Image failed to load</p>
-                      <Button 
-                        variant="link" 
-                        size="sm" 
-                        className="mt-2"
-                        onClick={() => window.open(currentProof.imageUrl || "", "_blank")}
-                      >
-                        Open in new tab
-                      </Button>
-                    </div>
-                  ) : (
-                    <img 
-                      src={currentProof.imageUrl || ""} 
-                      alt="Proof" 
-                      className={`w-full h-auto object-contain ${viewingFullscreen ? 'max-h-[70vh]' : 'max-h-[400px]'}`}
-                      onLoad={() => setImageLoading(false)}
-                      onError={() => {
-                        setImageLoading(false);
-                        setImageLoadError(true);
-                      }}
-                      style={{ display: imageLoading ? 'none' : 'block' }}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-
-            {currentProof?.comment && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">User Comment</h4>
-                <div className={`p-4 rounded-md text-sm ${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-                  {currentProof.comment}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowProofDialog(false)}
-              >
-                Close
-              </Button>
-              
-              {currentProof && (
-                <>
-                  <Button 
-                    variant="destructive"
-                    onClick={() => {
-                      handleDenyRequest(currentProof.id);
-                      setShowProofDialog(false);
-                    }}
-                    disabled={processing === currentProof.id}
-                  >
-                    {processing === currentProof.id ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin mr-2" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <XCircle size={16} className="mr-2" />
-                        Deny Request
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="default"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => {
-                      handleApproveRequest(currentProof.id);
-                      setShowProofDialog(false);
-                    }}
-                    disabled={processing === currentProof.id}
-                  >
-                    {processing === currentProof.id ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin mr-2" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle size={16} className="mr-2" />
-                        Approve Request
-                      </>
-                    )}
-                  </Button>
-                </>
-              )}
-            </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleApproveRequest(request)}
+                    >
+                      <Check className="h-4 w-4 mr-1" /> Approve
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-destructive border-destructive hover:bg-destructive/10"
+                      onClick={() => handleRejectRequest(request)}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Reject
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+        )}
+      </TabsContent>
+      
+      <TabsContent value="custom" className="mt-6">
+        <h3 className="text-xl font-bold mb-4 flex items-center">
+          <FileText className="h-5 w-5 mr-2" /> 
+          Custom Requests
+        </h3>
+        
+        {customRequests.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>No Requests</CardTitle>
+              <CardDescription>There are no pending custom requests at this time.</CardDescription>
+            </CardHeader>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {customRequests.filter(req => req.status === "pending").map((request) => (
+              <Card key={request.id} className="overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>{request.username?.charAt(0) || "U"}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-base">{request.username}</CardTitle>
+                        <CardDescription className="text-xs mt-1 flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {format(new Date(request.createdAt), "MMM d, yyyy")}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20">
+                      {request.type.charAt(0).toUpperCase() + request.type.slice(1)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="pb-3">
+                  <div className="mb-3">
+                    <h4 className="font-medium">{request.title}</h4>
+                    {request.description && (
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        {request.description}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleApproveCustomRequest(request.id)}
+                    >
+                      <Check className="h-4 w-4 mr-1" /> Approve
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-destructive border-destructive hover:bg-destructive/10"
+                      onClick={() => handleRejectCustomRequest(request.id)}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Reject
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+      
+      {/* Image Preview Dialog */}
+      <Dialog open={!!imagePreview} onOpenChange={(open) => !open && setImagePreview(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Proof Image</DialogTitle>
+          </DialogHeader>
+          {imagePreview && (
+            <img 
+              src={imagePreview} 
+              alt="Proof"
+              className="w-full rounded-md object-contain max-h-[80vh]"
+            />
+          )}
         </DialogContent>
       </Dialog>
-    </div>
+    </Tabs>
   );
-};
-
-export default RequestList;
+}
