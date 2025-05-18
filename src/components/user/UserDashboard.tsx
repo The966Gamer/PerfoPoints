@@ -1,11 +1,10 @@
-
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TaskCard } from "./TaskCard";
+import { TaskCard } from "./task";
 import { RewardCard } from "./RewardCard";
 import { Leaderboard } from "./Leaderboard";
 import { UserStats } from "./UserStats";
