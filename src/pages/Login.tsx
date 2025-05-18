@@ -6,16 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Loader2, Eye, EyeClosed } from "lucide-react";
+import { Loader2, Eye, EyeClosed, Mail, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 const Login = () => {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, sendVerificationEmail } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailVerificationNeeded, setEmailVerificationNeeded] = useState(false);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,12 +26,34 @@ const Login = () => {
     
     try {
       if (isRegistering) {
-        await signUp(email, password, username, username);
+        await signUp(email, password, username);
+        setEmailVerificationNeeded(true);
       } else {
         await signIn(email, password);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Authentication error:", error);
+      // Special handling for email verification errors
+      if (error.message && error.message.includes("Email not verified")) {
+        setEmailVerificationNeeded(true);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      await sendVerificationEmail(email);
+      toast.success("Verification email sent. Please check your inbox.");
+    } catch (error) {
+      console.error("Error sending verification email:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -52,6 +77,24 @@ const Login = () => {
             }
           </CardDescription>
         </CardHeader>
+        
+        {emailVerificationNeeded && (
+          <Alert className="mx-4 mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Verification required</AlertTitle>
+            <AlertDescription>
+              Please verify your email address to continue.
+              <Button 
+                variant="link" 
+                onClick={handleResendVerification}
+                className="p-0 h-auto"
+                disabled={isSubmitting}
+              >
+                Resend verification email
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         
         <form onSubmit={handleSubmit} className="auth-form">
           {isRegistering && (
@@ -146,7 +189,10 @@ const Login = () => {
             <button
               type="button"
               className="auth-link"
-              onClick={() => setIsRegistering(!isRegistering)}
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setEmailVerificationNeeded(false);
+              }}
               disabled={isSubmitting}
             >
               {isRegistering ? "Already have an account? Login" : "Need an account? Register"}

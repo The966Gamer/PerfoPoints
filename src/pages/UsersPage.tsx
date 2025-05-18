@@ -1,420 +1,275 @@
 
-import React, { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { PageLayout } from "@/components/layout/PageLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { User } from "@/types";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { MoreHorizontal, Search, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, User as UserIcon, Users, Award } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import React, { useState, useEffect } from 'react';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { useAuth } from '@/context/AuthContext';
+import { 
+  Table, TableBody, TableCell, TableHead, 
+  TableHeader, TableRow 
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { CheckCircle, Gift, Lock, MoreHorizontal, Search, UserX } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { User } from '@/types';
+import { format } from 'date-fns';
+import { AdminGiftDialog } from '@/components/admin/AdminGiftDialog';
 
 const UsersPage = () => {
-  const { currentUser, getAllUsers, users, blockUser, updateProfile } = useAuth();
+  const { currentUser, users, getAllUsers, blockUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showBlocked, setShowBlocked] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [userPoints, setUserPoints] = useState<number>(0);
-  const [userRole, setUserRole] = useState<string>("user");
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [showUnblockDialog, setShowUnblockDialog] = useState(false);
+  const [showGiftDialog, setShowGiftDialog] = useState(false);
   
   useEffect(() => {
     const loadUsers = async () => {
       try {
         await getAllUsers();
       } catch (error) {
-        console.error("Failed to load users:", error);
+        console.error('Error loading users:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     loadUsers();
   }, [getAllUsers]);
   
+  // Filter users when search term or users list changes
   useEffect(() => {
-    const filtered = users.filter(user => 
-      (activeTab === "all" || 
-       (activeTab === "admins" && user.role === "admin") || 
-       (activeTab === "users" && user.role === "user")) &&
-      (user.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-       user.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (showBlocked || !user.isBlocked)
-    );
-    setFilteredUsers(filtered);
-  }, [users, searchTerm, showBlocked, activeTab]);
-  
-  const handleUpdateRole = async (userId: string, role: 'admin' | 'user') => {
-    try {
-      await updateProfile({
-        id: userId,
-        role: role
-      });
-      
-      toast.success(`User role updated to ${role}`);
-    } catch (error: any) {
-      toast.error(`Failed to update role: ${error.message}`);
+    if (users) {
+      const filtered = users.filter(user => 
+        user.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredUsers(filtered);
     }
-  };
+  }, [searchTerm, users]);
   
-  const handleOpenUserDetails = (user: User) => {
-    setSelectedUser(user);
-    setUserPoints(user.points || 0);
-    setUserRole(user.role || 'user');
-    setIsDetailModalOpen(true);
-  };
-  
-  const handleSaveUserChanges = async () => {
+  const handleBlock = async () => {
     if (!selectedUser) return;
     
     try {
-      await updateProfile({
-        id: selectedUser.id,
-        points: userPoints,
-        role: userRole as 'admin' | 'user'
-      });
-      
-      toast.success("User details updated successfully!");
-      setIsDetailModalOpen(false);
-      getAllUsers();
-    } catch (error: any) {
-      toast.error(`Failed to update user: ${error.message}`);
+      await blockUser(selectedUser.id, true);
+      setShowBlockDialog(false);
+    } catch (error) {
+      console.error('Error blocking user:', error);
     }
   };
   
-  if (!currentUser || currentUser.role !== "admin") {
-    return <PageLayout requireAuth>You don't have permission to view this page</PageLayout>;
+  const handleUnblock = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await blockUser(selectedUser.id, false);
+      setShowUnblockDialog(false);
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+    }
+  };
+  
+  const openBlockDialog = (user: User) => {
+    setSelectedUser(user);
+    setShowBlockDialog(true);
+  };
+  
+  const openUnblockDialog = (user: User) => {
+    setSelectedUser(user);
+    setShowUnblockDialog(true);
+  };
+  
+  const openGiftDialog = (user: User) => {
+    setSelectedUser(user);
+    setShowGiftDialog(true);
+  };
+  
+  // Check if user is admin
+  if (currentUser?.role !== 'admin') {
+    return (
+      <PageLayout title="Users" requireAuth>
+        <div className="flex flex-col items-center justify-center h-full">
+          <h2 className="text-2xl font-bold">Access Denied</h2>
+          <p className="text-muted-foreground">You need admin privileges to view this page.</p>
+        </div>
+      </PageLayout>
+    );
   }
   
   return (
-    <PageLayout requireAuth title="User Management">
-      <Card className="bg-card/95 backdrop-blur-sm border-opacity-50">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                User Management
-              </CardTitle>
-              <CardDescription>View and manage user accounts</CardDescription>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button variant="outline" size="sm">
-                <Award className="h-4 w-4 mr-2" />
-                Award Points
-              </Button>
-              <Button variant="default" size="sm">
-                <UserIcon className="h-4 w-4 mr-2" />
-                Add User
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="showBlocked" 
-                  checked={showBlocked}
-                  onCheckedChange={(checked) => setShowBlocked(checked === true)}
-                />
-                <label 
-                  htmlFor="showBlocked"
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  Show blocked users
-                </label>
-              </div>
-            </div>
-          </div>
-          
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="all" className="flex gap-2 items-center">
-                <Users className="h-4 w-4" />
-                All Users
-                <Badge variant="outline" className="ml-1">{users.length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="admins" className="flex gap-2 items-center">
-                <ShieldAlert className="h-4 w-4" />
-                Administrators
-                <Badge variant="outline" className="ml-1">
-                  {users.filter(u => u.role === "admin").length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger value="users" className="flex gap-2 items-center">
-                <UserIcon className="h-4 w-4" />
-                Standard Users
-                <Badge variant="outline" className="ml-1">
-                  {users.filter(u => u.role === "user").length}
-                </Badge>
-              </TabsTrigger>
-            </TabsList>
-            
-            <UsersTable 
-              users={filteredUsers} 
-              currentUser={currentUser} 
-              onBlockUser={blockUser}
-              onUpdateRole={handleUpdateRole}
-              onViewDetails={handleOpenUserDetails}
-            />
-          </Tabs>
-        </CardContent>
-      </Card>
+    <PageLayout title="Manage Users" requireAuth>
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search users..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
       
-      {/* User Detail Modal */}
-      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>User Details</DialogTitle>
-            <DialogDescription>
-              View and edit detailed information about this user.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedUser && (
-            <div className="py-4">
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={selectedUser.avatarUrl} />
-                  <AvatarFallback>
-                    {selectedUser.username?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-medium text-lg">{selectedUser.username}</h3>
-                  <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="userPoints">Points</Label>
-                  <Input 
-                    id="userPoints" 
-                    type="number" 
-                    value={userPoints} 
-                    onChange={(e) => setUserPoints(parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="userRole">User Role</Label>
-                  <Select value={userRole} onValueChange={setUserRole}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrator</SelectItem>
-                      <SelectItem value="user">Standard User</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>User ID:</span>
-                    <span className="font-mono text-muted-foreground">{selectedUser.id.substring(0, 8)}...</span>
-                  </div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Account Created:</span>
-                    <span className="text-muted-foreground">
-                      {selectedUser.createdAt ? format(new Date(selectedUser.createdAt), "PP") : "Unknown"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Email Verified:</span>
-                    <span>
-                      {selectedUser.emailVerified ? (
-                        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                          Verified
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                          Not Verified
-                        </Badge>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveUserChanges}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </PageLayout>
-  );
-};
-
-// UsersTable component
-interface UsersTableProps {
-  users: User[];
-  currentUser: User;
-  onBlockUser: (userId: string, isBlocked: boolean) => Promise<void>;
-  onUpdateRole: (userId: string, role: 'admin' | 'user') => Promise<void>;
-  onViewDetails: (user: User) => void;
-}
-
-const UsersTable = ({ users, currentUser, onBlockUser, onUpdateRole, onViewDetails }: UsersTableProps) => {
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>User</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Points</TableHead>
-            <TableHead>Joined</TableHead>
-            <TableHead className="w-[80px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.length === 0 ? (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
-                No users found.
-              </TableCell>
+              <TableHead className="w-[80px]">Avatar</TableHead>
+              <TableHead>User</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-center">Points</TableHead>
+              <TableHead className="hidden sm:table-cell">Role</TableHead>
+              <TableHead className="hidden md:table-cell">Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ) : (
-            users.map((user) => (
-              <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewDetails(user)}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatarUrl} />
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-10">
+                  Loading users...
+                </TableCell>
+              </TableRow>
+            ) : filteredUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-10">
+                  No users found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredUsers.map(user => (
+                <TableRow key={user.id} className={user.isBlocked ? "bg-red-50/30 dark:bg-red-950/10" : ""}>
+                  <TableCell>
+                    <Avatar>
+                      <AvatarImage src={user.avatarUrl || undefined} />
                       <AvatarFallback>
-                        <UserIcon className="h-4 w-4" />
+                        {user.username?.charAt(0).toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="font-medium">{user.username}</div>
-                      <div className="text-xs text-muted-foreground">{user.email}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {user.isBlocked ? (
-                    <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                      <XCircle className="h-3 w-3" /> Blocked
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium">{user.username}</div>
+                    <div className="text-sm text-muted-foreground">{user.email}</div>
+                  </TableCell>
+                  <TableCell>
+                    {user.isBlocked ? (
+                      <Badge variant="destructive">Blocked</Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                        Active
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center font-medium">
+                    {user.points}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                      {user.role}
                     </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 flex items-center gap-1 w-fit">
-                      <CheckCircle2 className="h-3 w-3" /> Active
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {user.role === "admin" ? (
-                    <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                      <ShieldAlert className="h-3 w-3" /> Admin
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                      <UserIcon className="h-3 w-3" /> User
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>{user.points}</TableCell>
-                <TableCell>
-                  {user.createdAt ? (
-                    format(new Date(user.createdAt), "PP")
-                  ) : (
-                    "Unknown"
-                  )}
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  {user.id !== currentUser.id && (
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">
+                    {user.createdAt ? format(new Date(user.createdAt), 'MMM d, yyyy') : '-'}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
+                        <Button variant="ghost" size="icon">
                           <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">More</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {user.role !== "admin" ? (
-                          <DropdownMenuItem
-                            onClick={() => onUpdateRole(user.id, "admin")}
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => openGiftDialog(user)}
+                          className="cursor-pointer"
+                        >
+                          <Gift className="mr-2 h-4 w-4" />
+                          <span>Send gift</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {user.isBlocked ? (
+                          <DropdownMenuItem 
+                            onClick={() => openUnblockDialog(user)}
+                            className="cursor-pointer"
                           >
-                            <ShieldCheck className="mr-2 h-4 w-4" />
-                            Make Admin
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            <span>Unblock user</span>
                           </DropdownMenuItem>
                         ) : (
-                          <DropdownMenuItem
-                            onClick={() => onUpdateRole(user.id, "user")}
+                          <DropdownMenuItem 
+                            onClick={() => openBlockDialog(user)}
+                            className="cursor-pointer text-red-600 dark:text-red-400"
                           >
-                            <UserIcon className="mr-2 h-4 w-4" />
-                            Make User
+                            <UserX className="mr-2 h-4 w-4" />
+                            <span>Block user</span>
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem
-                          onClick={() => onBlockUser(user.id, !user.isBlocked)}
-                        >
-                          {user.isBlocked ? (
-                            <>
-                              <CheckCircle2 className="mr-2 h-4 w-4" />
-                              Unblock User
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Block User
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onViewDetails(user)}>
-                          <Award className="mr-2 h-4 w-4" />
-                          Manage Points
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      
+      {/* Block User Dialog */}
+      <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Block User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to block {selectedUser?.username}? 
+              This will prevent them from logging in and using the application.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBlock} className="bg-red-500 hover:bg-red-600">
+              Block User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Unblock User Dialog */}
+      <AlertDialog open={showUnblockDialog} onOpenChange={setShowUnblockDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unblock User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unblock {selectedUser?.username}? 
+              This will allow them to log in and use the application again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnblock}>
+              Unblock User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Gift Dialog */}
+      <AdminGiftDialog 
+        open={showGiftDialog} 
+        onClose={() => setShowGiftDialog(false)}
+        user={selectedUser}
+      />
+    </PageLayout>
   );
 };
 

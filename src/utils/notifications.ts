@@ -9,18 +9,10 @@ export const createNotification = async (notification: { userId: string, message
     // In a future implementation, this could store notifications in a dedicated table
     console.log("Creating notification:", notification);
     
-    // For now, we just mark that the user has a notification
-    const { error } = await supabase
-      .from("profiles")
-      .update({ notification_seen: false })
-      .eq("id", notification.userId);
+    // For now, we just show the toast notification
+    toast.info(notification.message);
     
-    if (error) {
-      console.error("Error creating notification:", error);
-      return;
-    }
-    
-    console.log("Notification scheduled:", notification);
+    console.log("Notification shown:", notification);
   } catch (error: any) {
     console.error("Error creating notification:", error);
   }
@@ -39,5 +31,33 @@ export const showNotification = (message: string, type: "success" | "error" | "i
     default:
       toast.info(message);
       break;
+  }
+};
+
+// Send email notification (using Supabase Edge Function)
+export const sendEmailNotification = async (email: string, subject: string, message: string): Promise<boolean> => {
+  try {
+    // Call the send-email edge function
+    const response = await fetch(`${supabase.functions.url}/send-notification-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+      },
+      body: JSON.stringify({
+        email,
+        subject,
+        message
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to send email: ${response.statusText}`);
+    }
+
+    return true;
+  } catch (error: any) {
+    console.error("Error sending email notification:", error);
+    return false;
   }
 };
