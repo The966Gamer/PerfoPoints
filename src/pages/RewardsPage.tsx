@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -72,7 +71,6 @@ const RewardsPage = () => {
       description,
       pointCost,
       approvalKeyRequired,
-      createdBy: currentUser?.id || "",
       category
     });
 

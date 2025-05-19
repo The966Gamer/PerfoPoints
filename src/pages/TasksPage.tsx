@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -52,7 +51,7 @@ const TasksPage = () => {
   const [description, setDescription] = useState("");
   const [pointValue, setPointValue] = useState(10);
   const [deadline, setDeadline] = useState("");
-  const [autoReset, setAutoReset] = useState(true);
+  const [recurring, setRecurring] = useState(false);
   const [category, setCategory] = useState("general");
   
   const isAdmin = currentUser?.role === "admin";
@@ -62,7 +61,7 @@ const TasksPage = () => {
     setDescription("");
     setPointValue(10);
     setDeadline("");
-    setAutoReset(true);
+    setRecurring(false);
     setCategory("general");
   };
   
@@ -73,9 +72,10 @@ const TasksPage = () => {
       title,
       description,
       pointValue,
-      deadline: deadline || undefined,
-      autoReset,
-      createdBy: currentUser?.id || "",
+      deadline: deadline || null,
+      recurring,
+      autoReset: recurring,
+      status: "active",
       category
     });
     
@@ -294,13 +294,13 @@ const TasksPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Input
-                  id="autoReset"
+                  id="recurring"
                   type="checkbox"
                   className="w-4 h-4"
-                  checked={autoReset}
-                  onChange={(e) => setAutoReset(e.target.checked)}
+                  checked={recurring}
+                  onChange={(e) => setRecurring(e.target.checked)}
                 />
-                <Label htmlFor="autoReset">Auto-reset after completion</Label>
+                <Label htmlFor="recurring">Recurring task</Label>
               </div>
             </div>
             <DialogFooter>

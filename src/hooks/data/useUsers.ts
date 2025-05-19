@@ -14,7 +14,6 @@ export function useUsers() {
       const profileData: any = {};
       
       if (data.username) profileData.username = data.username;
-      if (data.fullName !== undefined) profileData.full_name = data.fullName;
       if (data.avatarUrl) profileData.avatar_url = data.avatarUrl;
       if (data.email) profileData.email = data.email;
       if (data.points !== undefined) profileData.points = data.points;

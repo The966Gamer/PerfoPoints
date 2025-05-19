@@ -28,7 +28,7 @@ export function useTasks() {
         category: task.category || "general",
         pointValue: task.points_value,
         recurring: task.recurring || false,
-        autoReset: false, // Default value
+        autoReset: task.recurring || false, // Set autoReset same as recurring
         status: task.status === "active" ? "active" : "inactive",
         createdAt: task.created_at,
         createdBy: task.created_by || null,
@@ -55,7 +55,7 @@ export function useTasks() {
         title: task.title,
         description: task.description,
         points_value: task.pointValue,
-        recurring: false, // Default to false if not provided
+        recurring: task.recurring || false,
         category: task.category,
         status: task.status || "active",
         created_by: userId,
@@ -87,6 +87,7 @@ export function useTasks() {
       if (updates.pointValue !== undefined) dbUpdates.points_value = updates.pointValue;
       if (updates.category !== undefined) dbUpdates.category = updates.category;
       if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.recurring !== undefined) dbUpdates.recurring = updates.recurring;
       // We don't include deadline as it's not in the database
       
       const { error } = await supabase

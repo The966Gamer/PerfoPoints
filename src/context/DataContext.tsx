@@ -6,7 +6,8 @@ import { useRewards } from "@/hooks/data/useRewards";
 import { usePointRequests } from "@/hooks/data/usePointRequests";
 import { useCustomRequests } from "@/hooks/data/useCustomRequests";
 import { useUsers } from "@/hooks/data/useUsers";
-import { PointRequest, CustomRequest, Task, Reward, User } from "@/types";
+import { useStreak } from "@/hooks/data/useStreak";
+import { PointRequest, CustomRequest, Task, Reward, User, Streak } from "@/types";
 
 interface DataContextType {
   pointRequests: PointRequest[];
@@ -15,6 +16,7 @@ interface DataContextType {
   rewards: Reward[];
   requests: PointRequest[]; // Add this for compatibility
   loading: boolean;
+  streak: Streak | null;
   fetchPointRequests: () => Promise<void>;
   fetchCustomRequests: () => Promise<void>;
   fetchAllTasks: () => Promise<void>;
@@ -34,6 +36,7 @@ interface DataContextType {
   redeemReward: (rewardId: string) => Promise<void>;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'createdBy'>) => Promise<void>;
   addReward: (reward: Omit<Reward, 'id' | 'createdAt' | 'createdBy'>) => Promise<void>;
+  checkStreak: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -43,6 +46,7 @@ const DataContext = createContext<DataContextType>({
   rewards: [],
   requests: [],
   loading: true,
+  streak: null,
   fetchPointRequests: async () => {},
   fetchCustomRequests: async () => {},
   fetchAllTasks: async () => {},
@@ -62,6 +66,7 @@ const DataContext = createContext<DataContextType>({
   redeemReward: async () => {},
   addTask: async () => {},
   addReward: async () => {},
+  checkStreak: async () => {},
 });
 
 export const useData = () => useContext(DataContext);
@@ -77,13 +82,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const pointRequestHooks = usePointRequests();
   const customRequestHooks = useCustomRequests();
   const userHooks = useUsers();
+  const streakHooks = useStreak();
 
   // Combine all loading states
   const loading = 
     taskHooks.loading || 
     rewardHooks.loading || 
     pointRequestHooks.loading || 
-    customRequestHooks.loading;
+    customRequestHooks.loading || 
+    streakHooks.loading;
 
   // Load data on first mount
   useEffect(() => {
@@ -99,6 +106,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     loadData();
   }, []);
 
+  // Check streak on every component mount
+  useEffect(() => {
+    streakHooks.checkStreak();
+  }, []);
+
   const value: DataContextType = {
     pointRequests: pointRequestHooks.pointRequests,
     customRequests: customRequestHooks.customRequests,
@@ -106,6 +118,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     rewards: rewardHooks.rewards,
     requests: pointRequestHooks.pointRequests, // Alias for compatibility
     loading,
+    streak: streakHooks.streak,
     fetchPointRequests: pointRequestHooks.fetchPointRequests,
     fetchCustomRequests: customRequestHooks.fetchCustomRequests,
     fetchAllTasks: taskHooks.fetchAllTasks,
@@ -124,7 +137,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     createPointRequest: pointRequestHooks.createPointRequest,
     redeemReward: rewardHooks.redeemReward,
     addTask: taskHooks.addTask,
-    addReward: rewardHooks.addReward
+    addReward: rewardHooks.addReward,
+    checkStreak: streakHooks.checkStreak
   };
 
   return (

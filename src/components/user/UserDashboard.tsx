@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
@@ -12,10 +13,11 @@ import { PremiumFeatures } from "./PremiumFeatures";
 import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { CustomRequestFormDialog } from "./CustomRequestFormDialog";
 
 export function UserDashboard() {
   const { currentUser } = useAuth();
-  const { tasks, rewards } = useData();
+  const { tasks, rewards, streak } = useData();
   const navigate = useNavigate();
 
   if (!currentUser) return null;
@@ -99,12 +101,16 @@ export function UserDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-2">
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{streak?.currentStreak || 0}</div>
             <p className="text-xs text-muted-foreground">days in a row</p>
           </CardContent>
           <CardFooter className="pt-0">
             <Badge variant="outline" className="text-xs">
-              Keep it up!
+              {streak?.currentStreak === 0 
+                ? "Complete a task today!" 
+                : streak?.currentStreak >= 5 
+                  ? "Awesome streak!" 
+                  : "Keep it up!"}
             </Badge>
           </CardFooter>
           <div className="absolute -bottom-4 -right-4 opacity-20">
@@ -115,6 +121,14 @@ export function UserDashboard() {
 
       {/* New detailed User Stats */}
       <UserStats />
+
+      <div className="flex flex-col sm:flex-row justify-between items-center">
+        <h2 className="text-2xl font-bold tracking-tight">Quick Actions</h2>
+        <div className="flex gap-2 mt-4 sm:mt-0">
+          <CustomRequestFormDialog buttonVariant="outline" defaultType="task" />
+          <CustomRequestFormDialog buttonVariant="outline" defaultType="reward" />
+        </div>
+      </div>
 
       <Tabs defaultValue="tasks" className="w-full">
         <TabsList className="grid w-full grid-cols-4">

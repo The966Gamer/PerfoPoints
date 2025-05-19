@@ -2,6 +2,7 @@
 export interface User {
   id: string;
   username: string;
+  fullName?: string; // Add fullName field
   role: 'admin' | 'user';
   points: number;
   avatarUrl?: string;
@@ -19,12 +20,13 @@ export interface Task {
   title: string;
   description: string;
   pointValue: number;
-  deadline?: string;
+  deadline?: string | null;
   autoReset: boolean;
   createdAt: string;
-  createdBy: string;
+  createdBy: string | null;
   category?: string;
   status?: 'active' | 'inactive';
+  recurring?: boolean; // Add recurring field
 }
 
 export interface Reward {
@@ -35,7 +37,7 @@ export interface Reward {
   image?: string;
   approvalKeyRequired: boolean;
   createdAt: string;
-  createdBy: string;
+  createdBy: string | null;
   category?: string;
 }
 
