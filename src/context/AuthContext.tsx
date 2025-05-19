@@ -1,4 +1,3 @@
-
 import { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types";
@@ -327,10 +326,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = signOut;
 
   // Register function
-  const signUp = async (email: string, password: string, username: string, fullName: string) => {
+  const signUp = async (email: string, password: string, username: string, fullName: string = "") => {
     try {
       setLoading(true);
       
+      // First check if username already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("username", username)
+        .maybeSingle();
+      
+      if (checkError) throw checkError;
+      
+      if (existingUser) {
+        throw new Error("Username already exists. Please choose another username.");
+      }
+      
+      // Proceed with signup if username is available
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -343,7 +356,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       
       if (error) {
-        toast.error(error.message);
         throw error;
       }
       
@@ -355,8 +367,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           toast.success("Account created! Please check your email for verification.");
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sign up error:", error);
+      toast.error(error.message || "Failed to create account");
       throw error;
     } finally {
       setLoading(false);

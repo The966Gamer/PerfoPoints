@@ -38,11 +38,18 @@ export const showNotification = (message: string, type: "success" | "error" | "i
 export const sendEmailNotification = async (email: string, subject: string, message: string): Promise<boolean> => {
   try {
     // Call the send-email edge function
-    const response = await fetch(`${supabase.functions.url}/send-notification-email`, {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Get the function URL with string concatenation instead of using the protected url property
+    const functionEndpoint = "send-notification-email";
+    const supabaseProjectRef = "qvfkazkgugonkrktiurw";
+    const functionUrl = `https://${supabaseProjectRef}.functions.supabase.co/${functionEndpoint}`;
+    
+    const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+        'Authorization': `Bearer ${session?.access_token || ''}`
       },
       body: JSON.stringify({
         email,
