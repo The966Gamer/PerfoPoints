@@ -15,7 +15,6 @@ import {
   Gift,
   Home,
   LogOut,
-  Mail,
   Settings,
   Star,
   User,

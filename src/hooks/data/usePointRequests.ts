@@ -101,27 +101,37 @@ export function usePointRequests() {
       if (error) throw error;
 
       if (status === "approved") {
-        // Award points to the user - use string for points calculation instead of numeric operation
+        // Get current points
+        const { data: userData, error: fetchError } = await supabase
+          .from("profiles")
+          .select("points")
+          .eq("id", userId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const currentPoints = userData.points || 0;
+        const newTotal = currentPoints + pointValue;
+        
+        // Award points to the user
         const { error: updateError } = await supabase
           .from("profiles")
-          .update({ points: supabase.rpc('increment_points', { points_to_add: pointValue, user_id: userId }) })
+          .update({ points: newTotal })
           .eq("id", userId);
           
         if (updateError) throw updateError;
+        
+        // Record in points history
+        await supabase.from("points_history").insert({
+          user_id: userId,
+          points: pointValue,
+          new_total: newTotal,
+          task_id: taskId,
+          type: "task_completion"
+        });
       }
 
-      // Get both user and task details for the notification
-      const { data: req, error: reqError } = await supabase
-        .from("point_requests")
-        .select(`*, profiles:user_id(*)`)
-        .eq("id", requestId)
-        .single();
-
-      if (reqError) throw reqError;
-
-      // Simplified notification
       toast.success(`Point request ${status === "approved" ? "approved" : "rejected"} successfully!`);
-
       fetchPointRequests();
       return true;
     } catch (error: any) {

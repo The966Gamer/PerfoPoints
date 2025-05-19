@@ -32,7 +32,7 @@ export function useTasks() {
         status: task.status === "active" ? "active" : "inactive",
         createdAt: task.created_at,
         createdBy: task.created_by || null,
-        deadline: task.deadline || null,
+        deadline: null, // Not in the database schema
       }));
       
       setTasks(mappedTasks);
@@ -59,7 +59,7 @@ export function useTasks() {
         category: task.category,
         status: task.status || "active",
         created_by: userId,
-        deadline: task.deadline
+        // We don't include deadline as it's not in the database
       };
       
       const { error } = await supabase
@@ -87,7 +87,7 @@ export function useTasks() {
       if (updates.pointValue !== undefined) dbUpdates.points_value = updates.pointValue;
       if (updates.category !== undefined) dbUpdates.category = updates.category;
       if (updates.status !== undefined) dbUpdates.status = updates.status;
-      if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline;
+      // We don't include deadline as it's not in the database
       
       const { error } = await supabase
         .from("tasks")

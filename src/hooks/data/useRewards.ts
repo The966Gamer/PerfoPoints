@@ -16,7 +16,7 @@ export function useRewards() {
       const { data, error } = await supabase
         .from("rewards")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("id", { ascending: false });
       
       if (error) throw error;
       
@@ -28,8 +28,8 @@ export function useRewards() {
         category: reward.category || "general",
         pointCost: reward.points_cost,
         approvalKeyRequired: reward.requires_approval || false,
-        createdAt: reward.created_at || new Date().toISOString(),
-        createdBy: null,
+        createdAt: new Date().toISOString(), // Default since rewards table doesn't have this field
+        createdBy: null, // Default
         image: null, // Default
       }));
       

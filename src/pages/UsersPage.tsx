@@ -1,273 +1,224 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { useAuth } from '@/context/AuthContext';
-import { 
-  Table, TableBody, TableCell, TableHead, 
-  TableHeader, TableRow 
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CheckCircle, Gift, Lock, MoreHorizontal, Search, UserX } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { User } from '@/types';
-import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
+import { Gift, UserX, UserCheck, Shield, BadgeCheck } from 'lucide-react';
 import { AdminGiftDialog } from '@/components/admin/AdminGiftDialog';
 
 const UsersPage = () => {
-  const { currentUser, users, getAllUsers, blockUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const { currentUser } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showBlockDialog, setShowBlockDialog] = useState(false);
-  const [showUnblockDialog, setShowUnblockDialog] = useState(false);
-  const [showGiftDialog, setShowGiftDialog] = useState(false);
-  
+  const [isGiftDialogOpen, setIsGiftDialogOpen] = useState<boolean>(false);
+
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        await getAllUsers();
-      } catch (error) {
-        console.error('Error loading users:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadUsers();
-  }, [getAllUsers]);
-  
-  // Filter users when search term or users list changes
-  useEffect(() => {
-    if (users) {
-      const filtered = users.filter(user => 
-        user.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredUsers(filtered);
-    }
-  }, [searchTerm, users]);
-  
-  const handleBlock = async () => {
-    if (!selectedUser) return;
-    
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
     try {
-      await blockUser(selectedUser.id, true);
-      setShowBlockDialog(false);
-    } catch (error) {
-      console.error('Error blocking user:', error);
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Map to User type
+      const mappedUsers: User[] = data.map(user => ({
+        id: user.id,
+        username: user.username,
+        fullName: user.full_name,
+        email: user.email || '',
+        avatarUrl: user.avatar_url || '',
+        points: user.points,
+        role: user.role as 'admin' | 'user',
+        emailVerified: user.email_verified,
+        isBlocked: user.is_blocked || false,
+      }));
+      
+      setUsers(mappedUsers);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const handleUnblock = async () => {
-    if (!selectedUser) return;
-    
+
+  const toggleUserBlock = async (user: User) => {
     try {
-      await blockUser(selectedUser.id, false);
-      setShowUnblockDialog(false);
-    } catch (error) {
-      console.error('Error unblocking user:', error);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_blocked: !user.isBlocked })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      toast.success(`User ${user.isBlocked ? 'unblocked' : 'blocked'} successfully!`);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error toggling user block:', error);
+      toast.error(error.message);
     }
   };
-  
-  const openBlockDialog = (user: User) => {
-    setSelectedUser(user);
-    setShowBlockDialog(true);
+
+  const toggleAdminRole = async (user: User) => {
+    try {
+      const newRole = user.role === 'admin' ? 'user' : 'admin';
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      toast.success(`User role changed to ${newRole} successfully!`);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error changing user role:', error);
+      toast.error(error.message);
+    }
   };
-  
-  const openUnblockDialog = (user: User) => {
-    setSelectedUser(user);
-    setShowUnblockDialog(true);
-  };
-  
+
   const openGiftDialog = (user: User) => {
     setSelectedUser(user);
-    setShowGiftDialog(true);
+    setIsGiftDialogOpen(true);
   };
-  
-  // Check if user is admin
-  if (currentUser?.role !== 'admin') {
+
+  if (!currentUser || currentUser.role !== 'admin') {
     return (
-      <PageLayout title="Users" requireAuth>
-        <div className="flex flex-col items-center justify-center h-full">
-          <h2 className="text-2xl font-bold">Access Denied</h2>
-          <p className="text-muted-foreground">You need admin privileges to view this page.</p>
+      <PageLayout requireAuth title="Unauthorized">
+        <div className="flex flex-col items-center justify-center min-h-[50vh]">
+          <Shield className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+          <p className="text-muted-foreground">
+            You don't have permission to view this page.
+          </p>
         </div>
       </PageLayout>
     );
   }
-  
+
   return (
-    <PageLayout title="Manage Users" requireAuth>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search users..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    <PageLayout requireAuth title="User Management">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">All Users</h2>
+          <Button onClick={fetchUsers} variant="outline" disabled={loading}>
+            Refresh List
+          </Button>
         </div>
-      </div>
-      
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[80px]">Avatar</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-center">Points</TableHead>
-              <TableHead className="hidden sm:table-cell">Role</TableHead>
-              <TableHead className="hidden md:table-cell">Created</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+        
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableCaption>Manage all users in the system</TableCaption>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10">
-                  Loading users...
-                </TableCell>
+                <TableHead>Username</TableHead>
+                <TableHead>Name & Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="text-right">Points</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-10">
-                  No users found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredUsers.map(user => (
-                <TableRow key={user.id} className={user.isBlocked ? "bg-red-50/30 dark:bg-red-950/10" : ""}>
+            </TableHeader>
+            <TableBody>
+              {users.map(user => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.username}</TableCell>
                   <TableCell>
-                    <Avatar>
-                      <AvatarImage src={user.avatarUrl || undefined} />
-                      <AvatarFallback>
-                        {user.username?.charAt(0).toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{user.username}</div>
+                    <div>{user.fullName}</div>
                     <div className="text-sm text-muted-foreground">{user.email}</div>
                   </TableCell>
+                  <TableCell>
+                    <Badge variant={user.role === 'admin' ? "default" : "outline"}>
+                      {user.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">{user.points}</TableCell>
                   <TableCell>
                     {user.isBlocked ? (
                       <Badge variant="destructive">Blocked</Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                      <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20">
                         Active
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-center font-medium">
-                    {user.points}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {user.createdAt ? format(new Date(user.createdAt), 'MMM d, yyyy') : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">More</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => openGiftDialog(user)}
-                          className="cursor-pointer"
-                        >
-                          <Gift className="mr-2 h-4 w-4" />
-                          <span>Send gift</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {user.isBlocked ? (
-                          <DropdownMenuItem 
-                            onClick={() => openUnblockDialog(user)}
-                            className="cursor-pointer"
-                          >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            <span>Unblock user</span>
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem 
-                            onClick={() => openBlockDialog(user)}
-                            className="cursor-pointer text-red-600 dark:text-red-400"
-                          >
-                            <UserX className="mr-2 h-4 w-4" />
-                            <span>Block user</span>
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-right space-x-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => openGiftDialog(user)}
+                    >
+                      <Gift className="h-4 w-4 mr-1" />
+                      Gift
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleAdminRole(user)}
+                    >
+                      <BadgeCheck className="h-4 w-4 mr-1" />
+                      {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                    </Button>
+                    <Button 
+                      variant={user.isBlocked ? "default" : "destructive"}
+                      size="sm"
+                      onClick={() => toggleUserBlock(user)}
+                    >
+                      {user.isBlocked ? (
+                        <UserCheck className="h-4 w-4 mr-1" />
+                      ) : (
+                        <UserX className="h-4 w-4 mr-1" />
+                      )}
+                      {user.isBlocked ? 'Unblock' : 'Block'}
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ))}
+              {users.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              )}
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Loading users...
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
       
-      {/* Block User Dialog */}
-      <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Block User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to block {selectedUser?.username}? 
-              This will prevent them from logging in and using the application.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBlock} className="bg-red-500 hover:bg-red-600">
-              Block User
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Unblock User Dialog */}
-      <AlertDialog open={showUnblockDialog} onOpenChange={setShowUnblockDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unblock User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to unblock {selectedUser?.username}? 
-              This will allow them to log in and use the application again.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUnblock}>
-              Unblock User
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Gift Dialog */}
       <AdminGiftDialog 
-        open={showGiftDialog} 
-        onClose={() => setShowGiftDialog(false)}
-        user={selectedUser}
+        open={isGiftDialogOpen} 
+        onClose={() => setIsGiftDialogOpen(false)} 
+        user={selectedUser} 
       />
     </PageLayout>
   );
