@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
-import { Tab } from '@headlessui/react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CustomRequest } from '@/types';
 import { CheckCircle, Clock, XCircle } from 'lucide-react';
 
@@ -21,7 +22,7 @@ const getStatusIcon = (status: string) => {
 
 const RequestsPage = () => {
   const { currentUser } = useAuth();
-  const { customRequests, fetchCustomRequests, updateCustomRequest } = useData();
+  const { customRequests, fetchCustomRequests, reviewCustomRequest } = useData();
   const [selectedTab, setSelectedTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   useEffect(() => {
@@ -30,7 +31,7 @@ const RequestsPage = () => {
 
   const handleStatusUpdate = async (requestId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
     try {
-      await updateCustomRequest(requestId, { status: newStatus });
+      await reviewCustomRequest(requestId, newStatus);
       fetchCustomRequests(); // Refresh requests after update
     } catch (error) {
       console.error("Error updating request status:", error);
@@ -47,60 +48,40 @@ const RequestsPage = () => {
   return (
     <PageLayout requireAuth title="Your Requests">
       <div className="container mx-auto p-4">
-        <Tab.Group selectedIndex={['pending', 'approved', 'rejected'].indexOf(selectedTab)} onChange={(index) => setSelectedTab(['pending', 'approved', 'rejected'][index] as 'pending' | 'approved' | 'rejected')}>
-          <Tab.List className="flex space-x-4 mb-6">
-            <Tab className={({ selected }) =>
-              `rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary
-              ${selected
-                ? 'bg-primary text-primary-foreground shadow'
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`
-            }>
-              Pending
-            </Tab>
-            <Tab className={({ selected }) =>
-              `rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary
-              ${selected
-                ? 'bg-primary text-primary-foreground shadow'
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`
-            }>
-              Approved
-            </Tab>
-            <Tab className={({ selected }) =>
-              `rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary
-              ${selected
-                ? 'bg-primary text-primary-foreground shadow'
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`
-            }>
-              Rejected
-            </Tab>
-          </Tab.List>
-          <Tab.Panels>
-            <Tab.Panel>
-              <RequestList
-                requests={filteredRequests}
-                currentUser={currentUser}
-                handleStatusUpdate={handleStatusUpdate}
-                selectedTab={selectedTab}
-              />
-            </Tab.Panel>
-            <Tab.Panel>
-              <RequestList
-                requests={filteredRequests}
-                currentUser={currentUser}
-                handleStatusUpdate={handleStatusUpdate}
-                selectedTab={selectedTab}
-              />
-            </Tab.Panel>
-            <Tab.Panel>
-              <RequestList
-                requests={filteredRequests}
-                currentUser={currentUser}
-                handleStatusUpdate={handleStatusUpdate}
-                selectedTab={selectedTab}
-              />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
+        <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as 'pending' | 'approved' | 'rejected')}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="approved">Approved</TabsTrigger>
+            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="pending">
+            <RequestList
+              requests={filteredRequests}
+              currentUser={currentUser}
+              handleStatusUpdate={handleStatusUpdate}
+              selectedTab={selectedTab}
+            />
+          </TabsContent>
+          
+          <TabsContent value="approved">
+            <RequestList
+              requests={filteredRequests}
+              currentUser={currentUser}
+              handleStatusUpdate={handleStatusUpdate}
+              selectedTab={selectedTab}
+            />
+          </TabsContent>
+          
+          <TabsContent value="rejected">
+            <RequestList
+              requests={filteredRequests}
+              currentUser={currentUser}
+              handleStatusUpdate={handleStatusUpdate}
+              selectedTab={selectedTab}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </PageLayout>
   );
@@ -109,7 +90,7 @@ const RequestsPage = () => {
 interface RequestListProps {
   requests: CustomRequest[];
   currentUser: any;
-  handleStatusUpdate: (requestId: string, newStatus: string) => Promise<void>;
+  handleStatusUpdate: (requestId: string, newStatus: 'pending' | 'approved' | 'rejected') => Promise<void>;
   selectedTab: string;
 }
 

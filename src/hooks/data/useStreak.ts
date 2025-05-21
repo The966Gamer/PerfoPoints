@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { Streak } from '@/types';
 import { toast } from 'sonner';
@@ -21,42 +20,20 @@ export function useStreak() {
       }
 
       setLoading(true);
-
-      // Try to get existing streak from streaks table
-      const { data: streakData, error: streakError } = await supabase
-        .from('streaks')
-        .select('*')
-        .eq('userId', currentUser.id)
-        .single();
       
-      if (streakError && streakError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error fetching streak data:', streakError);
-        
-        // Fallback to localStorage for backward compatibility
-        const storedStreak = localStorage.getItem(`streak_${currentUser.id}`);
-        
-        if (storedStreak) {
-          const parsedStreak = JSON.parse(storedStreak);
-          setStreak({
-            userId: currentUser.id,
-            currentStreak: parsedStreak.currentStreak,
-            lastActivity: parsedStreak.lastActivity,
-            longestStreak: parsedStreak.longestStreak
-          });
-        } else {
-          // Create default streak data
-          setStreak({
-            userId: currentUser.id,
-            currentStreak: 0,
-            lastActivity: new Date().toISOString(),
-            longestStreak: 0
-          });
-        }
-      } else if (streakData) {
-        // Use data from streaks table
-        setStreak(streakData);
+      // Use localStorage for streak data for now
+      const storedStreak = localStorage.getItem(`streak_${currentUser.id}`);
+      
+      if (storedStreak) {
+        const parsedStreak = JSON.parse(storedStreak);
+        setStreak({
+          userId: currentUser.id,
+          currentStreak: parsedStreak.currentStreak,
+          lastActivity: parsedStreak.lastActivity,
+          longestStreak: parsedStreak.longestStreak
+        });
       } else {
-        // Create new streak entry in database
+        // Create default streak data
         const newStreak: Streak = {
           userId: currentUser.id,
           currentStreak: 0,
@@ -64,21 +41,11 @@ export function useStreak() {
           longestStreak: 0
         };
         
-        const { data, error } = await supabase
-          .from('streaks')
-          .insert(newStreak)
-          .select()
-          .single();
-          
-        if (error) {
-          console.error('Error creating streak:', error);
-          // Fallback to local storage
-          localStorage.setItem(`streak_${currentUser.id}`, JSON.stringify({
-            currentStreak: newStreak.currentStreak,
-            lastActivity: newStreak.lastActivity,
-            longestStreak: newStreak.longestStreak
-          }));
-        }
+        localStorage.setItem(`streak_${currentUser.id}`, JSON.stringify({
+          currentStreak: newStreak.currentStreak,
+          lastActivity: newStreak.lastActivity,
+          longestStreak: newStreak.longestStreak
+        }));
         
         setStreak(newStreak);
       }
@@ -126,25 +93,12 @@ export function useStreak() {
       
       // Update streak data if changed
       if (updated) {
-        // Update streak in database
-        const { error } = await supabase
-          .from('streaks')
-          .update({
-            currentStreak: newStreak.currentStreak,
-            lastActivity: newStreak.lastActivity,
-            longestStreak: newStreak.longestStreak
-          })
-          .eq('userId', currentUser.id);
-        
-        if (error) {
-          console.error('Error updating streak:', error);
-          // Fallback to local storage if database update fails
-          localStorage.setItem(`streak_${currentUser.id}`, JSON.stringify({
-            currentStreak: newStreak.currentStreak,
-            lastActivity: newStreak.lastActivity,
-            longestStreak: newStreak.longestStreak
-          }));
-        }
+        // Update streak in localStorage
+        localStorage.setItem(`streak_${currentUser.id}`, JSON.stringify({
+          currentStreak: newStreak.currentStreak,
+          lastActivity: newStreak.lastActivity,
+          longestStreak: newStreak.longestStreak
+        }));
         
         setStreak(newStreak);
         
