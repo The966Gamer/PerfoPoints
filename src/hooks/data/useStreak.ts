@@ -16,6 +16,7 @@ export function useStreak() {
     try {
       if (!currentUser) {
         setStreak(null);
+        setLoading(false);
         return;
       }
 
@@ -37,14 +38,19 @@ export function useStreak() {
             longestStreak: 0
           };
           
-          await supabase
+          const { error: insertError } = await supabase
             .from('streaks')
-            .insert([{ 
+            .insert({ 
               user_id: currentUser.id,
               current_streak: newStreak.currentStreak,
               last_activity: newStreak.lastActivity,
               longest_streak: newStreak.longestStreak
-            }]);
+            });
+            
+          if (insertError) {
+            console.error('Error creating streak:', insertError);
+            throw insertError;
+          }
             
           setStreak({
             userId: currentUser.id,
@@ -53,7 +59,7 @@ export function useStreak() {
         } else {
           throw error;
         }
-      } else {
+      } else if (data) {
         // Map DB fields to frontend naming
         setStreak({
           userId: data.user_id,
