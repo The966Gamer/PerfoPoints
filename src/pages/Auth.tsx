@@ -1,12 +1,12 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { ArrowLeft, Check, Eye, EyeClosed, Mail, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff, Mail, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -282,7 +282,7 @@ const Auth = () => {
                                   className="absolute right-0 top-0 h-full px-3"
                                   onClick={() => setShowPassword(!showPassword)}
                                 >
-                                  {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </Button>
                               </div>
                             </FormControl>
@@ -382,7 +382,7 @@ const Auth = () => {
                                   className="absolute right-0 top-0 h-full px-3"
                                   onClick={() => setShowPassword(!showPassword)}
                                 >
-                                  {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
+                                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </Button>
                               </div>
                             </FormControl>

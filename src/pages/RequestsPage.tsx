@@ -109,7 +109,7 @@ const RequestList: React.FC<RequestListProps> = ({ requests, currentUser, handle
             </div>
             <p className="text-gray-600">{request.description}</p>
             <div className="mt-2 text-sm text-gray-500">
-              Requested by {currentUser.username} on {new Date(request.createdAt).toLocaleDateString()}
+              Requested by {request.username} on {new Date(request.createdAt).toLocaleDateString()}
             </div>
             {currentUser.role === 'admin' && selectedTab === 'pending' && (
               <div className="mt-4 flex justify-end space-x-2">

@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 import { Heading } from '@/components/ui/Heading';
 import { Button } from '@/components/ui/button';
 import { User } from '@/types';
@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { PlusCircle, UserCheck, UserX } from 'lucide-react';
 import { AdminGiftDialog } from '@/components/admin/AdminGiftDialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function UsersPage() {
-  const { updateUserProfile, grantPoints, grantKeys } = useData();
+  const { updateProfile } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -19,12 +20,10 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [giftDialogOpen, setGiftDialogOpen] = useState(false);
 
-  // Implement our own fetchUsers function since it's not in useData
+  // Implement our own fetchUsers function
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      // Use supabase to fetch the users
-      const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -44,10 +43,11 @@ export default function UsersPage() {
           fullName: user.full_name,
           email: user.email || '',
           points: user.points,
-          role: user.role,
+          role: user.role as 'admin' | 'user',
           isBlocked: user.is_blocked || false,
           avatarUrl: user.avatar_url || '',
-          emailVerified: user.email_verified
+          emailVerified: user.email_verified,
+          createdAt: user.created_at
         }));
         setUsers(mappedUsers);
         setFilteredUsers(mappedUsers);
@@ -78,7 +78,7 @@ export default function UsersPage() {
 
   const toggleUserBlock = async (user: User) => {
     try {
-      const success = await updateUserProfile(user.id, {
+      const success = await updateProfile(user.id, {
         isBlocked: !user.isBlocked
       });
       
@@ -97,9 +97,9 @@ export default function UsersPage() {
     setGiftDialogOpen(true);
   };
 
-  const handleGiftSuccess = () => {
-    fetchUsers();
+  const handleCloseGiftDialog = () => {
     setGiftDialogOpen(false);
+    fetchUsers(); // Refresh users after dialog closes
   };
 
   if (loading) {
@@ -188,9 +188,8 @@ export default function UsersPage() {
       {selectedUser && (
         <AdminGiftDialog
           open={giftDialogOpen}
-          onClose={() => setGiftDialogOpen(false)}
+          onClose={handleCloseGiftDialog}
           user={selectedUser}
-          onSuccess={handleGiftSuccess}
         />
       )}
     </div>

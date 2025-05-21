@@ -8,6 +8,7 @@ import { DataProvider } from "@/context/DataContext";
 import Dashboard from "@/pages/Dashboard";
 import Index from "@/pages/Index";
 import Login from "@/pages/Login";
+import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
 import AuthCallback from "@/pages/AuthCallback";
 import ProfilePage from "@/pages/ProfilePage";
@@ -28,6 +29,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<ProfilePage />} />
@@ -37,7 +39,7 @@ function App() {
               <Route path="/users" element={<UsersPage />} />
               <Route path="/achievements" element={<AchievementsPage />} />
               <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>
             <Toaster position="top-center" richColors />
           </DataProvider>
