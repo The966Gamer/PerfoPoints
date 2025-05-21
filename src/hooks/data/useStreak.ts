@@ -21,51 +21,44 @@ export function useStreak() {
       }
 
       setLoading(true);
-      
-      // Try to get existing streak
-      const { data, error } = await supabase
-        .from('streaks')
-        .select('*')
-        .eq('user_id', currentUser.id)
+
+      // Try to get existing streak from profiles table (temporary solution until streaks table is created)
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('id, points')
+        .eq('id', currentUser.id)
         .single();
       
-      if (error) {
-        // If no streak found, create default one
-        if (error.code === 'PGRST116') {
-          const newStreak: Omit<Streak, 'userId'> = {
-            currentStreak: 0,
-            lastActivity: new Date().toISOString(),
-            longestStreak: 0
-          };
-          
-          const { error: insertError } = await supabase
-            .from('streaks')
-            .insert({ 
-              user_id: currentUser.id,
-              current_streak: newStreak.currentStreak,
-              last_activity: newStreak.lastActivity,
-              longest_streak: newStreak.longestStreak
-            });
-            
-          if (insertError) {
-            console.error('Error creating streak:', insertError);
-            throw insertError;
-          }
-            
-          setStreak({
-            userId: currentUser.id,
-            ...newStreak
-          });
-        } else {
-          throw error;
-        }
-      } else if (data) {
-        // Map DB fields to frontend naming
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        throw userError;
+      }
+
+      // For now, we'll use localStorage to track streaks until the database schema is updated
+      const storedStreak = localStorage.getItem(`streak_${currentUser.id}`);
+      
+      if (storedStreak) {
+        const parsedStreak = JSON.parse(storedStreak);
         setStreak({
-          userId: data.user_id,
-          currentStreak: data.current_streak,
-          lastActivity: data.last_activity,
-          longestStreak: data.longest_streak
+          userId: currentUser.id,
+          currentStreak: parsedStreak.currentStreak,
+          lastActivity: parsedStreak.lastActivity,
+          longestStreak: parsedStreak.longestStreak
+        });
+      } else {
+        // Create default streak data
+        const newStreak: Omit<Streak, 'userId'> = {
+          currentStreak: 0,
+          lastActivity: new Date().toISOString(),
+          longestStreak: 0
+        };
+        
+        // Store to localStorage for now
+        localStorage.setItem(`streak_${currentUser.id}`, JSON.stringify(newStreak));
+        
+        setStreak({
+          userId: currentUser.id,
+          ...newStreak
         });
       }
     } catch (error: any) {
@@ -110,18 +103,14 @@ export function useStreak() {
         updated = true;
       }
       
-      // Update streak in database if changed
+      // Update local streak data if changed
       if (updated) {
-        const { error } = await supabase
-          .from('streaks')
-          .update({
-            current_streak: newStreak.currentStreak,
-            last_activity: newStreak.lastActivity,
-            longest_streak: newStreak.longestStreak
-          })
-          .eq('user_id', currentUser.id);
-          
-        if (error) throw error;
+        // Store to localStorage for now
+        localStorage.setItem(`streak_${currentUser.id}`, JSON.stringify({
+          currentStreak: newStreak.currentStreak,
+          lastActivity: newStreak.lastActivity,
+          longestStreak: newStreak.longestStreak
+        }));
         
         setStreak(newStreak);
         

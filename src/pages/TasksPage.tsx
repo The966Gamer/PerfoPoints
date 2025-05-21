@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { TaskCard } from "@/components/user/TaskCard";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +14,8 @@ import {
   Search, 
   SlidersHorizontal,
   CalendarClock,
-  Star
+  Star,
+  Pray
 } from "lucide-react";
 import {
   Card,
@@ -39,6 +41,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const TasksPage = () => {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { tasks, addTask, updateTask, deleteTask } = useData();
   const [isAdding, setIsAdding] = useState(false);
@@ -86,6 +89,11 @@ const TasksPage = () => {
   // Get all unique categories
   const categories = ["all", ...new Set(tasks.map(task => task.category || "general"))];
   
+  // Ensure prayer category exists
+  if (!categories.includes("prayer")) {
+    categories.push("prayer");
+  }
+  
   // Filter and sort tasks
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -108,6 +116,12 @@ const TasksPage = () => {
     return 0;
   });
 
+  // Check if we need to add a daily prayer task
+  const hasSalahTask = tasks.some(task => 
+    (task.category === 'prayer' || task.title.toLowerCase().includes('salah') || task.title.toLowerCase().includes('prayer')) && 
+    task.recurring === true
+  );
+
   return (
     <PageLayout requireAuth title="Tasks">
       <div className="space-y-6">
@@ -116,12 +130,17 @@ const TasksPage = () => {
             <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
             <p className="text-muted-foreground">Complete tasks to earn points</p>
           </div>
-          {isAdmin && (
-            <Button onClick={() => setIsAdding(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Task
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/requests")}>
+              Request Task
             </Button>
-          )}
+            {isAdmin && (
+              <Button onClick={() => setIsAdding(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Task
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[3fr_1fr] gap-6">
@@ -156,12 +175,44 @@ const TasksPage = () => {
               <TabsList className="mb-4 overflow-auto">
                 {categories.map(cat => (
                   <TabsTrigger key={cat} value={cat} className="capitalize">
-                    {cat}
+                    {cat === 'prayer' ? (
+                      <div className="flex items-center gap-1">
+                        <Pray className="h-4 w-4" /> Prayer
+                      </div>
+                    ) : cat}
                   </TabsTrigger>
                 ))}
               </TabsList>
               
               <TabsContent value={categoryFilter}>
+                {categoryFilter === 'prayer' && !hasSalahTask && isAdmin && (
+                  <Card className="mb-4 bg-gradient-to-br from-blue-500/10 to-indigo-500/5">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Pray className="h-5 w-5 text-primary" /> Add Daily Prayer Task
+                      </CardTitle>
+                      <CardDescription>Create a task for tracking daily prayers</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        There's currently no prayer tracking task. As an admin, you can add one for users to track their daily prayers.
+                      </p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button onClick={() => {
+                        setTitle("Complete Daily Prayers");
+                        setDescription("Complete your five daily prayers (Fajr, Dhuhr, Asr, Maghrib, and Isha) and earn points for each day.");
+                        setPointValue(25);
+                        setCategory("prayer");
+                        setRecurring(true);
+                        setIsAdding(true);
+                      }}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Prayer Task
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )}
+
                 {sortedTasks.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                     {sortedTasks.map((task) => (
@@ -197,7 +248,11 @@ const TasksPage = () => {
                       className="capitalize cursor-pointer"
                       onClick={() => setCategoryFilter(cat)}
                     >
-                      {cat}
+                      {cat === 'prayer' ? (
+                        <div className="flex items-center gap-1">
+                          <Pray className="h-3 w-3" /> Prayer
+                        </div>
+                      ) : cat}
                     </Badge>
                   ))}
                 </div>
@@ -279,6 +334,7 @@ const TasksPage = () => {
                       <SelectItem value="chores">Chores</SelectItem>
                       <SelectItem value="exercise">Exercise</SelectItem>
                       <SelectItem value="reading">Reading</SelectItem>
+                      <SelectItem value="prayer">Prayer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

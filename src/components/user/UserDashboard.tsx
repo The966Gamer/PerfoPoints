@@ -10,7 +10,8 @@ import { RewardCard } from "./RewardCard";
 import { Leaderboard } from "./Leaderboard";
 import { UserStats } from "./UserStats";
 import { PremiumFeatures } from "./PremiumFeatures";
-import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar } from "lucide-react";
+import { PrayerTracker } from "./PrayerTracker";
+import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar, Pray } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CustomRequestFormDialog } from "./CustomRequestFormDialog";
@@ -119,12 +120,18 @@ export function UserDashboard() {
         </Card>
       </div>
 
+      {/* Prayer Tracker */}
+      <PrayerTracker />
+
       {/* New detailed User Stats */}
       <UserStats />
 
       <div className="flex flex-col sm:flex-row justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Quick Actions</h2>
         <div className="flex gap-2 mt-4 sm:mt-0">
+          <Button variant="outline" onClick={() => navigate("/requests")}>
+            View My Requests
+          </Button>
           <CustomRequestFormDialog buttonVariant="outline" defaultType="task" />
           <CustomRequestFormDialog buttonVariant="outline" defaultType="reward" />
         </div>
