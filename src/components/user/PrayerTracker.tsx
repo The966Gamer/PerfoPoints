@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
@@ -8,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Pray, CheckCircle } from 'lucide-react';
+import { BookOpen, CheckCircle } from 'lucide-react';
 
 interface Prayer {
   name: string;
@@ -19,7 +18,7 @@ interface Prayer {
 
 export function PrayerTracker() {
   const { currentUser } = useAuth();
-  const { submitPointRequest, tasks } = useData();
+  const { submitPointRequest, tasks, checkStreak } = useData();
   const [dailyPrayers, setDailyPrayers] = useState<Prayer[]>([
     { name: 'Fajr', arabicName: 'الفجر', time: 'Dawn', completed: false },
     { name: 'Dhuhr', arabicName: 'الظهر', time: 'Noon', completed: false },
@@ -79,6 +78,7 @@ export function PrayerTracker() {
     setDailyPrayers(newPrayers);
   };
 
+  // Enhanced handle submit function that increments streak for 5 daily prayers
   const handleSubmitPrayers = async () => {
     if (!salahTask?.id) {
       toast.error("No prayer tracking task found. Please ask an admin to create one.");
@@ -99,7 +99,14 @@ export function PrayerTracker() {
         .join(', ')}`;
       
       await submitPointRequest(salahTask.id, null, comment);
-      toast.success("Prayer tracking submitted successfully!");
+      
+      // Update streak if all prayers are completed
+      if (completedCount === 5) {
+        checkStreak();
+        toast.success("All prayers completed! Your streak has been updated. 🔥");
+      } else {
+        toast.success("Prayer tracking submitted successfully!");
+      }
     } catch (error) {
       console.error("Error submitting prayer tracking:", error);
       toast.error("Failed to submit prayer tracking. Please try again.");
@@ -112,7 +119,7 @@ export function PrayerTracker() {
     <Card className="bg-gradient-to-br from-blue-500/10 to-indigo-500/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Pray className="h-5 w-5 text-primary" />
+          <BookOpen className="h-5 w-5 text-primary" />
           Daily Prayer Tracker
         </CardTitle>
         <CardDescription>Track your five daily prayers</CardDescription>

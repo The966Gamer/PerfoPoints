@@ -15,7 +15,7 @@ import {
   SlidersHorizontal,
   CalendarClock,
   Star,
-  Pray
+  BookOpen
 } from "lucide-react";
 import {
   Card,
@@ -177,7 +177,7 @@ const TasksPage = () => {
                   <TabsTrigger key={cat} value={cat} className="capitalize">
                     {cat === 'prayer' ? (
                       <div className="flex items-center gap-1">
-                        <Pray className="h-4 w-4" /> Prayer
+                        <BookOpen className="h-4 w-4" /> Prayer
                       </div>
                     ) : cat}
                   </TabsTrigger>
@@ -189,7 +189,7 @@ const TasksPage = () => {
                   <Card className="mb-4 bg-gradient-to-br from-blue-500/10 to-indigo-500/5">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Pray className="h-5 w-5 text-primary" /> Add Daily Prayer Task
+                        <BookOpen className="h-5 w-5 text-primary" /> Add Daily Prayer Task
                       </CardTitle>
                       <CardDescription>Create a task for tracking daily prayers</CardDescription>
                     </CardHeader>
@@ -250,7 +250,7 @@ const TasksPage = () => {
                     >
                       {cat === 'prayer' ? (
                         <div className="flex items-center gap-1">
-                          <Pray className="h-3 w-3" /> Prayer
+                          <BookOpen className="h-3 w-3" /> Prayer
                         </div>
                       ) : cat}
                     </Badge>

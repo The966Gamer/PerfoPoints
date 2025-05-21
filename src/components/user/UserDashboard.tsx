@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
@@ -11,7 +10,7 @@ import { Leaderboard } from "./Leaderboard";
 import { UserStats } from "./UserStats";
 import { PremiumFeatures } from "./PremiumFeatures";
 import { PrayerTracker } from "./PrayerTracker";
-import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar, Pray } from "lucide-react";
+import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar, BookOpen } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CustomRequestFormDialog } from "./CustomRequestFormDialog";
