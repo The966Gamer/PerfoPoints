@@ -29,7 +29,7 @@ const RequestsPage = () => {
     fetchCustomRequests();
   }, [fetchCustomRequests]);
 
-  const handleStatusUpdate = async (requestId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
+  const handleStatusUpdate = async (requestId: string, newStatus: 'approved' | 'rejected') => {
     try {
       await reviewCustomRequest(requestId, newStatus);
       fetchCustomRequests(); // Refresh requests after update
@@ -90,7 +90,7 @@ const RequestsPage = () => {
 interface RequestListProps {
   requests: CustomRequest[];
   currentUser: any;
-  handleStatusUpdate: (requestId: string, newStatus: 'pending' | 'approved' | 'rejected') => Promise<void>;
+  handleStatusUpdate: (requestId: string, newStatus: 'approved' | 'rejected') => Promise<void>;
   selectedTab: string;
 }
 

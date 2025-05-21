@@ -37,7 +37,7 @@ function App() {
               <Route path="/users" element={<UsersPage />} />
               <Route path="/achievements" element={<AchievementsPage />} />
               <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
             <Toaster position="top-center" richColors />
           </DataProvider>

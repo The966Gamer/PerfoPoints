@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useUsers } from '@/hooks/data/useUsers';
+import { useData } from '@/context/DataContext';
 import { Heading } from '@/components/ui/Heading';
 import { Button } from '@/components/ui/button';
 import { User } from '@/types';
@@ -11,15 +11,58 @@ import { AdminGiftDialog } from '@/components/admin/AdminGiftDialog';
 import { toast } from 'sonner';
 
 export default function UsersPage() {
-  const { users, loading, fetchUsers, updateUserProfile } = useUsers();
+  const { updateUserProfile, grantPoints, grantKeys } = useData();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [giftDialogOpen, setGiftDialogOpen] = useState(false);
 
+  // Implement our own fetchUsers function since it's not in useData
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      // Use supabase to fetch the users
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('username');
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast.error('Failed to load users');
+        return;
+      }
+      
+      if (data) {
+        // Map to the User type
+        const mappedUsers: User[] = data.map(user => ({
+          id: user.id,
+          username: user.username,
+          fullName: user.full_name,
+          email: user.email || '',
+          points: user.points,
+          role: user.role,
+          isBlocked: user.is_blocked || false,
+          avatarUrl: user.avatar_url || '',
+          emailVerified: user.email_verified
+        }));
+        setUsers(mappedUsers);
+        setFilteredUsers(mappedUsers);
+      }
+    } catch (err) {
+      console.error('Error in fetchUsers:', err);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, []);
 
   useEffect(() => {
     if (users && users.length > 0) {
@@ -52,6 +95,11 @@ export default function UsersPage() {
   const handleOpenGiftDialog = (user: User) => {
     setSelectedUser(user);
     setGiftDialogOpen(true);
+  };
+
+  const handleGiftSuccess = () => {
+    fetchUsers();
+    setGiftDialogOpen(false);
   };
 
   if (loading) {
@@ -142,10 +190,7 @@ export default function UsersPage() {
           open={giftDialogOpen}
           onClose={() => setGiftDialogOpen(false)}
           user={selectedUser}
-          onSuccess={() => {
-            fetchUsers();
-            setGiftDialogOpen(false);
-          }}
+          onSuccess={handleGiftSuccess}
         />
       )}
     </div>

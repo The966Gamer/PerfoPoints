@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -184,4 +183,12 @@ export interface Streak {
   currentStreak: number;
   lastActivity: string;
   longestStreak: number;
+}
+
+// Add any missing interfaces or types needed for the AdminGiftDialog
+export interface AdminGiftDialogProps {
+  open: boolean;
+  onClose: () => void;
+  user: User;
+  onSuccess?: () => void;
 }
