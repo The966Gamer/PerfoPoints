@@ -21,7 +21,7 @@ export function useCustomRequests() {
       
       if (requestsError) throw requestsError;
       
-      // Get all profiles in a separate query
+      // Get all profiles in a separate query (not trying to join)
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("id, username");
@@ -58,7 +58,7 @@ export function useCustomRequests() {
   };
 
   // Submit a custom request
-  const submitCustomRequest = async (request: Omit<CustomRequest, 'id' | 'createdAt' | 'updatedAt' | 'reviewedBy'>) => {
+  const submitCustomRequest = async (request: Omit<CustomRequest, 'id' | 'createdAt' | 'updatedAt' | 'reviewedBy' | 'username'>) => {
     try {
       const user = await supabase.auth.getUser();
       const userId = user.data.user?.id;

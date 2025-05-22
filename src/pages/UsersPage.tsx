@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Heading } from '@/components/ui/Heading';
@@ -12,7 +11,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function UsersPage() {
-  const { updateProfile } = useAuth();
+  const { updateProfile, currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -102,6 +101,44 @@ export default function UsersPage() {
   const handleCloseGiftDialog = () => {
     setGiftDialogOpen(false);
     fetchUsers(); // Refresh users after dialog closes
+  };
+
+  const grantPoints = async (userId: string, points: number) => {
+    try {
+      if (!currentUser) return;
+      
+      await supabase.rpc('add_points', {
+        target_user_id: userId,
+        amount: points
+      });
+      
+      // Refresh users after granting points
+      fetchUsers();
+      toast.success(`Successfully granted ${points} points`);
+    } catch (error: any) {
+      console.error("Error granting points:", error);
+      toast.error(error.message);
+    }
+  };
+
+  const handleBlockUser = async (userId: string, isBlocked: boolean) => {
+    try {
+      if (!currentUser || !currentUser.role) return;
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_blocked: isBlocked })
+        .eq('id', userId);
+        
+      if (error) throw error;
+      
+      // Refresh users after blocking/unblocking
+      fetchUsers();
+      toast.success(`Successfully ${isBlocked ? 'blocked' : 'unblocked'} user`);
+    } catch (error: any) {
+      console.error("Error updating user block status:", error);
+      toast.error(error.message);
+    }
   };
 
   if (loading) {

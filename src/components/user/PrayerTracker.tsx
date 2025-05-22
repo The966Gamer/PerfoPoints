@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isWithinInterval, parseISO, set } from 'date-fns';
 import { BookOpen, CheckCircle, CalendarCheck } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
@@ -17,20 +17,91 @@ interface Prayer {
   time: string;
   timeRange: string;
   completed: boolean;
+  startTime: Date;
+  endTime: Date;
 }
 
 export function PrayerTracker() {
   const { currentUser } = useAuth();
   const { submitPointRequest, tasks, checkStreak } = useData();
   const [selectedPrayer, setSelectedPrayer] = useState<string | null>(null);
-  const [dailyPrayers, setDailyPrayers] = useState<Prayer[]>([
-    { name: 'Fajr', arabicName: 'الفجر', time: 'Dawn', timeRange: '4:00 AM - 6:30 AM', completed: false },
-    { name: 'Dhuhr', arabicName: 'الظهر', time: 'Noon', timeRange: '12:00 PM - 3:30 PM', completed: false },
-    { name: 'Asr', arabicName: 'العصر', time: 'Afternoon', timeRange: '3:30 PM - 6:00 PM', completed: false },
-    { name: 'Maghrib', arabicName: 'المغرب', time: 'Sunset', timeRange: '6:00 PM - 8:00 PM', completed: false },
-    { name: 'Isha', arabicName: 'العشاء', time: 'Night', timeRange: '8:00 PM - 4:00 AM', completed: false },
-  ]);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [todayDate, setTodayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
+  // Create prayer times dynamically based on current date
+  const createPrayerTimes = (date: Date) => {
+    const today = date;
+    
+    const fajrStart = set(today, { hours: 4, minutes: 0 });
+    const fajrEnd = set(today, { hours: 6, minutes: 30 });
+    
+    const dhuhrStart = set(today, { hours: 12, minutes: 0 });
+    const dhuhrEnd = set(today, { hours: 15, minutes: 30 });
+    
+    const asrStart = set(today, { hours: 15, minutes: 30 });
+    const asrEnd = set(today, { hours: 18, minutes: 0 });
+    
+    const maghribStart = set(today, { hours: 18, minutes: 0 });
+    const maghribEnd = set(today, { hours: 20, minutes: 0 });
+    
+    // Isha can span overnight
+    const ishaStart = set(today, { hours: 20, minutes: 0 });
+    const ishaEnd = set(today, { hours: 4, minutes: 0 });
+    // If ishaEnd is before ishaStart, it means it's set to the next day's 4 AM
+    if (ishaEnd < ishaStart) {
+      ishaEnd.setDate(ishaEnd.getDate() + 1);
+    }
+    
+    return [
+      { 
+        name: 'Fajr', 
+        arabicName: 'الفجر', 
+        time: 'Dawn', 
+        timeRange: '4:00 AM - 6:30 AM', 
+        completed: false,
+        startTime: fajrStart,
+        endTime: fajrEnd
+      },
+      { 
+        name: 'Dhuhr', 
+        arabicName: 'الظهر', 
+        time: 'Noon', 
+        timeRange: '12:00 PM - 3:30 PM', 
+        completed: false,
+        startTime: dhuhrStart,
+        endTime: dhuhrEnd
+      },
+      { 
+        name: 'Asr', 
+        arabicName: 'العصر', 
+        time: 'Afternoon', 
+        timeRange: '3:30 PM - 6:00 PM', 
+        completed: false,
+        startTime: asrStart,
+        endTime: asrEnd
+      },
+      { 
+        name: 'Maghrib', 
+        arabicName: 'المغرب', 
+        time: 'Sunset', 
+        timeRange: '6:00 PM - 8:00 PM', 
+        completed: false,
+        startTime: maghribStart,
+        endTime: maghribEnd
+      },
+      { 
+        name: 'Isha', 
+        arabicName: 'العشاء', 
+        time: 'Night', 
+        timeRange: '8:00 PM - 4:00 AM', 
+        completed: false,
+        startTime: ishaStart,
+        endTime: ishaEnd
+      },
+    ];
+  };
+  
+  const [dailyPrayers, setDailyPrayers] = useState<Prayer[]>(createPrayerTimes(new Date()));
   
   // Find the Salah task
   const salahTask = tasks.find(task => 
@@ -39,16 +110,46 @@ export function PrayerTracker() {
     task.category?.toLowerCase() === 'prayer'
   );
 
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // every minute
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  // Check if a prayer time is currently active
+  const isPrayerTimeActive = (prayer: Prayer) => {
+    if (prayer.name === 'Isha' && prayer.endTime < prayer.startTime) {
+      // Special case for Isha which spans across days
+      return currentTime >= prayer.startTime || currentTime <= prayer.endTime;
+    }
+    
+    return isWithinInterval(currentTime, {
+      start: prayer.startTime,
+      end: prayer.endTime
+    });
+  };
+  
+  // Check if a prayer time has passed
+  const hasPrayerTimePassed = (prayer: Prayer) => {
+    if (prayer.name === 'Isha' && prayer.endTime < prayer.startTime) {
+      // Special case for Isha which spans across days
+      return currentTime > prayer.endTime && currentTime < prayer.startTime;
+    }
+    
+    return currentTime > prayer.endTime;
+  };
+  
   // Get current prayer based on time
   const getCurrentPrayer = () => {
-    const now = new Date();
-    const hour = now.getHours();
-    
-    if (hour >= 4 && hour < 12) return 'Fajr';
-    if (hour >= 12 && hour < 15.5) return 'Dhuhr';
-    if (hour >= 15.5 && hour < 18) return 'Asr';
-    if (hour >= 18 && hour < 20) return 'Maghrib';
-    return 'Isha';
+    for (const prayer of dailyPrayers) {
+      if (isPrayerTimeActive(prayer)) {
+        return prayer.name;
+      }
+    }
+    return null;
   };
 
   // Load saved prayer data for today
@@ -57,14 +158,28 @@ export function PrayerTracker() {
     
     const savedPrayers = localStorage.getItem(`prayers_${currentUser.id}_${todayDate}`);
     if (savedPrayers) {
-      setDailyPrayers(JSON.parse(savedPrayers));
+      const parsedPrayers = JSON.parse(savedPrayers);
+      
+      // Merge saved completion status with current time ranges
+      const updatedPrayers = createPrayerTimes(new Date()).map(prayer => {
+        const savedPrayer = parsedPrayers.find((p: Prayer) => p.name === prayer.name);
+        return {
+          ...prayer,
+          completed: savedPrayer ? savedPrayer.completed : false
+        };
+      });
+      
+      setDailyPrayers(updatedPrayers);
     } else {
       // Reset prayers for new day
-      setDailyPrayers(prev => prev.map(p => ({ ...p, completed: false })));
+      setDailyPrayers(createPrayerTimes(new Date()));
     }
     
-    // Default select the current prayer time
-    setSelectedPrayer(getCurrentPrayer());
+    // Default select the current prayer time if it's active
+    const currentActivePrayer = getCurrentPrayer();
+    if (currentActivePrayer) {
+      setSelectedPrayer(currentActivePrayer);
+    }
   }, [currentUser, todayDate]);
 
   // Save prayers whenever they change
@@ -92,7 +207,21 @@ export function PrayerTracker() {
   }, [todayDate]);
 
   const handlePrayerSelect = (prayerName: string) => {
-    setSelectedPrayer(prayerName);
+    const prayer = dailyPrayers.find(p => p.name === prayerName);
+    
+    if (prayer) {
+      if (prayer.completed) {
+        toast.error(`${prayer.name} prayer has already been completed`);
+        return;
+      }
+      
+      if (!isPrayerTimeActive(prayer) && !hasPrayerTimePassed(prayer)) {
+        toast.error(`It's not time for ${prayer.name} prayer yet`);
+        return;
+      }
+      
+      setSelectedPrayer(prayerName);
+    }
   };
 
   const markPrayerCompleted = () => {
@@ -140,13 +269,14 @@ export function PrayerTracker() {
       } else {
         toast.success("Prayer tracking submitted successfully!");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting prayer tracking:", error);
       toast.error("Failed to submit prayer tracking. Please try again.");
     }
   };
 
   const completedCount = dailyPrayers.filter(p => p.completed).length;
+  const currentActivePrayer = getCurrentPrayer();
 
   return (
     <Card className="bg-gradient-to-br from-blue-500/10 to-indigo-500/5">
@@ -155,7 +285,14 @@ export function PrayerTracker() {
           <BookOpen className="h-5 w-5 text-primary" />
           Daily Prayer Tracker
         </CardTitle>
-        <CardDescription>Track your five daily prayers</CardDescription>
+        <CardDescription>
+          Track your five daily prayers - {format(currentTime, 'h:mm a')}
+          {currentActivePrayer && (
+            <span className="ml-2 text-primary font-medium">
+              Current prayer time: {currentActivePrayer}
+            </span>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -163,29 +300,44 @@ export function PrayerTracker() {
             value={selectedPrayer || ''}
             onValueChange={handlePrayerSelect}
           >
-            {dailyPrayers.map((prayer) => (
-              <div key={prayer.name} className="flex items-center justify-between space-x-2 mb-2">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value={prayer.name} 
-                    id={`prayer-${prayer.name}`}
-                    disabled={prayer.completed}
-                  />
-                  <div>
-                    <Label htmlFor={`prayer-${prayer.name}`} className="font-medium">
-                      {prayer.name}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">{prayer.timeRange}</p>
+            {dailyPrayers.map((prayer) => {
+              const isActive = isPrayerTimeActive(prayer);
+              const hasPassed = hasPrayerTimePassed(prayer);
+              const isSelectable = isActive || hasPassed;
+              
+              return (
+                <div key={prayer.name} className="flex items-center justify-between space-x-2 mb-2">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem 
+                      value={prayer.name} 
+                      id={`prayer-${prayer.name}`}
+                      disabled={prayer.completed || !isSelectable}
+                    />
+                    <div>
+                      <Label 
+                        htmlFor={`prayer-${prayer.name}`} 
+                        className={`font-medium ${isActive ? 'text-primary' : ''}`}
+                      >
+                        {prayer.name}
+                        {isActive && <span className="ml-2 text-xs text-primary">(Current)</span>}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">{prayer.timeRange}</p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-right">
+                    <span className="text-muted-foreground">{prayer.arabicName}</span>
+                    {prayer.completed && (
+                      <CheckCircle className="h-4 w-4 text-green-500 ml-2 inline" />
+                    )}
+                    {!isSelectable && !prayer.completed && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        (Not yet time)
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="text-sm text-right">
-                  <span className="text-muted-foreground">{prayer.arabicName}</span>
-                  {prayer.completed && (
-                    <CheckCircle className="h-4 w-4 text-green-500 ml-2 inline" />
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </RadioGroup>
 
           <div className="mt-4 flex justify-end">
