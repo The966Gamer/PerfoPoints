@@ -1,6 +1,6 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { AuthProvider } from "@/context/AuthContext";
 import { DataProvider } from "@/context/DataContext";
@@ -39,7 +39,8 @@ function App() {
               <Route path="/users" element={<UsersPage />} />
               <Route path="/achievements" element={<AchievementsPage />} />
               <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
+              {/* Redirect to dashboard instead of 404 for unknown routes */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
             <Toaster position="top-center" richColors />
           </DataProvider>

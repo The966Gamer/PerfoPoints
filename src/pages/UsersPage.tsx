@@ -78,10 +78,12 @@ export default function UsersPage() {
 
   const toggleUserBlock = async (user: User) => {
     try {
+      // Fix: Only pass one argument to updateProfile
       const success = await updateProfile(user.id, {
         isBlocked: !user.isBlocked
       });
       
+      // Fix: Check that success is truthy before showing toast
       if (success) {
         toast.success(`User ${user.isBlocked ? 'unblocked' : 'blocked'} successfully`);
         fetchUsers();

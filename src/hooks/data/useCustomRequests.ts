@@ -13,15 +13,29 @@ export function useCustomRequests() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Get the custom requests
+      const { data: requestsData, error: requestsError } = await supabase
         .from("custom_requests")
-        .select(`*, profiles:user_id(username)`)
+        .select("*")
         .order("created_at", { ascending: false });
       
-      if (error) throw error;
+      if (requestsError) throw requestsError;
       
-      // Map database columns to frontend naming
-      const mappedCustomRequests: CustomRequest[] = data.map(req => ({
+      // Get all profiles in a separate query
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, username");
+        
+      if (profilesError) throw profilesError;
+      
+      // Create a map of user IDs to usernames
+      const usernameMap = new Map();
+      profilesData.forEach((profile: any) => {
+        usernameMap.set(profile.id, profile.username);
+      });
+      
+      // Map database columns to frontend naming and attach usernames
+      const mappedCustomRequests: CustomRequest[] = requestsData.map(req => ({
         id: req.id,
         userId: req.user_id,
         title: req.title,
@@ -30,9 +44,8 @@ export function useCustomRequests() {
         status: req.status as "pending" | "approved" | "rejected",
         createdAt: req.created_at,
         updatedAt: req.updated_at,
-        // Fix: Use null for reviewedBy which might not exist
         reviewedBy: null,
-        username: (req.profiles as any)?.username
+        username: usernameMap.get(req.user_id) || "Unknown User"
       }));
       
       setCustomRequests(mappedCustomRequests);
@@ -53,7 +66,13 @@ export function useCustomRequests() {
       
       const { error } = await supabase
         .from("custom_requests")
-        .insert([{ ...request, user_id: userId }]);
+        .insert([{ 
+          user_id: userId,
+          title: request.title,
+          description: request.description,
+          type: request.type,
+          status: 'pending'
+        }]);
       
       if (error) throw error;
       
@@ -80,9 +99,6 @@ export function useCustomRequests() {
       
       toast.success(`Custom request ${status} successfully!`);
       fetchCustomRequests();
-      
-      // Simplified notification
-      toast.success(`Custom request ${status === "approved" ? "approved" : "rejected"} successfully!`);
     } catch (error: any) {
       console.error("Error reviewing custom request:", error);
       toast.error(error.message);
