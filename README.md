@@ -1,73 +1,36 @@
-# Welcome to your Lovable project
+# 🌟 PerfoPoints
 
-## Project info
+**PerfoPoints** is a fun and simple family rewards tracking system built for kids and parents! Kids can earn **Perfo Points** for doing good tasks, and parents can give out rewards once enough points are collected.
 
-**URL**: https://lovable.dev/projects/bf22118e-4d0d-4d99-86a8-79281a8439bd
+---
 
-## How can I edit this code?
+## 🎯 Features
 
-There are several ways of editing your application.
+- ✅ User and Admin login system
+- ✨ Earn points by completing tasks
+- 🎁 Redeem rewards when you have enough points
+- 🔒 Secure password system (with Firebase Auth or custom backend)
+- 📦 Built with Firebase Realtime Database and PostgreSQL
+- 📱 Cross-platform app: Works on PC (EXE) and Android (APK)
+- 🔧 Admin panel to create tasks, rewards, and manage users—no code editing needed!
+- 🔑 Rewards can have special keys for secret prizes
+- 🔁 Request & approval system: Kids request, parents approve
+- 🧩 Easy to use for all ages!
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/bf22118e-4d0d-4d99-86a8-79281a8439bd) and start prompting.
+## 🛠 Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend:** HTML, CSS, JavaScript, Capacitor (for Android), Electron (for PC)
+- **Backend:** Firebase Realtime Database & PostgreSQL (combined for better control)
+- **Auth:** Firebase Authentication or custom login system
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 📦 Setup Instructions
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Clone the Repo**
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/bf22118e-4d0d-4d99-86a8-79281a8439bd) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```bash
+git clone https://github.com/YOUR_USERNAME/perfopoints.git
+cd perfopoints
