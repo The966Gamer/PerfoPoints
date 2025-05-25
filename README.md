@@ -29,8 +29,5 @@
 
 ## 📦 Setup Instructions
 
-1. **Clone the Repo**
-
-```bash
-git clone https://github.com/YOUR_USERNAME/perfopoints.git
-cd perfopoints
+1. Download the realse apk or exe
+2. or go to the website perfopoints.lovable.app
