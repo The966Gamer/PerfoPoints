@@ -4,10 +4,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { format, isWithinInterval, parseISO, set } from 'date-fns';
+import { format, isWithinInterval, set } from 'date-fns';
 import { BookOpen, CheckCircle, CalendarCheck } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
@@ -24,7 +23,7 @@ interface Prayer {
 export function PrayerTracker() {
   const { currentUser } = useAuth();
   const { submitPointRequest, tasks, checkStreak } = useData();
-  const [selectedPrayer, setSelectedPrayer] = useState<string | null>(null);
+  const [selectedPrayer, setSelectedPrayer] = useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [todayDate, setTodayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
@@ -44,13 +43,8 @@ export function PrayerTracker() {
     const maghribStart = set(today, { hours: 18, minutes: 0 });
     const maghribEnd = set(today, { hours: 20, minutes: 0 });
     
-    // Isha can span overnight
     const ishaStart = set(today, { hours: 20, minutes: 0 });
-    const ishaEnd = set(today, { hours: 4, minutes: 0 });
-    // If ishaEnd is before ishaStart, it means it's set to the next day's 4 AM
-    if (ishaEnd < ishaStart) {
-      ishaEnd.setDate(ishaEnd.getDate() + 1);
-    }
+    const ishaEnd = set(new Date(today.getTime() + 24 * 60 * 60 * 1000), { hours: 4, minutes: 0 });
     
     return [
       { 
@@ -114,14 +108,14 @@ export function PrayerTracker() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); // every minute
+    }, 60000);
     
     return () => clearInterval(timer);
   }, []);
   
   // Check if a prayer time is currently active
   const isPrayerTimeActive = (prayer: Prayer) => {
-    if (prayer.name === 'Isha' && prayer.endTime < prayer.startTime) {
+    if (prayer.name === 'Isha') {
       // Special case for Isha which spans across days
       return currentTime >= prayer.startTime || currentTime <= prayer.endTime;
     }
@@ -134,7 +128,7 @@ export function PrayerTracker() {
   
   // Check if a prayer time has passed
   const hasPrayerTimePassed = (prayer: Prayer) => {
-    if (prayer.name === 'Isha' && prayer.endTime < prayer.startTime) {
+    if (prayer.name === 'Isha') {
       // Special case for Isha which spans across days
       return currentTime > prayer.endTime && currentTime < prayer.startTime;
     }
@@ -158,18 +152,23 @@ export function PrayerTracker() {
     
     const savedPrayers = localStorage.getItem(`prayers_${currentUser.id}_${todayDate}`);
     if (savedPrayers) {
-      const parsedPrayers = JSON.parse(savedPrayers);
-      
-      // Merge saved completion status with current time ranges
-      const updatedPrayers = createPrayerTimes(new Date()).map(prayer => {
-        const savedPrayer = parsedPrayers.find((p: Prayer) => p.name === prayer.name);
-        return {
-          ...prayer,
-          completed: savedPrayer ? savedPrayer.completed : false
-        };
-      });
-      
-      setDailyPrayers(updatedPrayers);
+      try {
+        const parsedPrayers = JSON.parse(savedPrayers);
+        
+        // Merge saved completion status with current time ranges
+        const updatedPrayers = createPrayerTimes(new Date()).map(prayer => {
+          const savedPrayer = parsedPrayers.find((p: Prayer) => p.name === prayer.name);
+          return {
+            ...prayer,
+            completed: savedPrayer ? savedPrayer.completed : false
+          };
+        });
+        
+        setDailyPrayers(updatedPrayers);
+      } catch (error) {
+        console.error('Error parsing saved prayers:', error);
+        setDailyPrayers(createPrayerTimes(new Date()));
+      }
     } else {
       // Reset prayers for new day
       setDailyPrayers(createPrayerTimes(new Date()));
@@ -197,7 +196,6 @@ export function PrayerTracker() {
       }
     };
 
-    // Check date on mount and when window gains focus
     checkDate();
     window.addEventListener('focus', checkDate);
     
@@ -240,7 +238,6 @@ export function PrayerTracker() {
     }
   };
 
-  // Enhanced handle submit function that increments streak for 5 daily prayers
   const handleSubmitPrayers = async () => {
     if (!salahTask?.id) {
       toast.error("No prayer tracking task found. Please ask an admin to create one.");
@@ -297,7 +294,7 @@ export function PrayerTracker() {
       <CardContent>
         <div className="space-y-4">
           <RadioGroup 
-            value={selectedPrayer || ''}
+            value={selectedPrayer}
             onValueChange={handlePrayerSelect}
           >
             {dailyPrayers.map((prayer) => {
@@ -324,13 +321,13 @@ export function PrayerTracker() {
                       <p className="text-xs text-muted-foreground">{prayer.timeRange}</p>
                     </div>
                   </div>
-                  <div className="text-sm text-right">
+                  <div className="text-sm text-right flex items-center gap-2">
                     <span className="text-muted-foreground">{prayer.arabicName}</span>
                     {prayer.completed && (
-                      <CheckCircle className="h-4 w-4 text-green-500 ml-2 inline" />
+                      <CheckCircle className="h-4 w-4 text-green-500" />
                     )}
                     {!isSelectable && !prayer.completed && (
-                      <span className="text-xs text-muted-foreground ml-2">
+                      <span className="text-xs text-muted-foreground">
                         (Not yet time)
                       </span>
                     )}

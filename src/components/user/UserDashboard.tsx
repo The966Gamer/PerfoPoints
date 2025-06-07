@@ -10,7 +10,7 @@ import { Leaderboard } from "./Leaderboard";
 import { UserStats } from "./UserStats";
 import { PremiumFeatures } from "./PremiumFeatures";
 import { PrayerTracker } from "./PrayerTracker";
-import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar, BookOpen } from "lucide-react";
+import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CustomRequestFormDialog } from "./CustomRequestFormDialog";
@@ -46,7 +46,7 @@ export function UserDashboard() {
 
   // Add weekday tracking functionality for the planner
   const [today] = useState(new Date());
-  const [weekDays, setWeekDays] = useState<Array<{ day: string, date: Date, tasks: number }>>([]);
+  const [weekDays, setWeekDays] = useState<Array<{ day: string, date: Date, tasks: number, isToday?: boolean }>>([]);
   
   // Generate the week days based on the current day
   useEffect(() => {
