@@ -1,73 +1,40 @@
-<!-- Include this in your app -->
-<div id="auth-container"></div>
+// auth-handler.js
 
-<script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+async function handleAuthFromUrl() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get('access_token');
+  if (!accessToken) return;
 
-  // Initialize Supabase
-  const supabase = createClient(
-    'https://qvfkazkgugonkrktiurw.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2ZmthemtndWdvbmtya3RpdXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxNDkyMjYsImV4cCI6MjA2MDcyNTIyNn0.fvW8jO8W_wmHG54WsVGq9eC-mPpbSZieyynJdsNDNJc
-  );
+  const refreshToken = params.get('refresh_token');
+  const expiresIn = params.get('expires_in');
+  const type = params.get('type');
 
-  // Run on page load
-  handleAuthFromUrl();
+  const { error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_in: parseInt(expiresIn, 10),
+  });
 
-  async function handleAuthFromUrl() {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get('access_token');
-    if (!accessToken) return;
-
-    const refreshToken = params.get('refresh_token');
-    const expiresIn = params.get('expires_in');
-    const type = params.get('type');
-
-    const { error } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_in: parseInt(expiresIn, 10),
-    });
-
-    if (error) {
-      showMessage(`❌ Error: ${error.message}`);
-      return;
-    }
-
-    if (type === 'recovery') {
-      showPasswordResetForm();
-    } else if (type === 'magiclink') {
-      showMessage('✅ You are now logged in using Magic Link!');
-    }
+  if (error) {
+    console.error('Error setting session:', error.message);
+    return;
   }
 
-  function showPasswordResetForm() {
-    const container = document.getElementById('auth-container');
-    container.innerHTML = `
-      <h2>🔐 Reset your password</h2>
-      <input type="password" id="new-password" placeholder="Enter new password" style="padding:8px;width:100%;margin-bottom:10px;" />
-      <button id="reset-btn" style="padding:10px 20px;">Reset Password</button>
-      <div id="status-msg" style="margin-top:10px;color:green;"></div>
-    `;
-
-    document.getElementById('reset-btn').addEventListener('click', async () => {
-      const newPassword = document.getElementById('new-password').value;
-      if (!newPassword || newPassword.length < 6) {
-        showMessage('⚠️ Password must be at least 6 characters.', true);
-        return;
-      }
-
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) {
-        showMessage(`❌ Error: ${error.message}`, true);
-      } else {
-        showMessage('✅ Password updated successfully! You may now log in.', false);
-      }
-    });
+  if (type === 'recovery') {
+    showPasswordResetForm();
+  } else if (type === 'magiclink') {
+    showLoggedInUI();
   }
+}
 
-  function showMessage(msg, isError = false) {
-    const container = document.getElementById('auth-container');
-    container.innerHTML = `<p style="color:${isError ? 'red' : 'green'}">${msg}</p>`;
-  }
-</script>
+function showPasswordResetForm() {
+  // TODO: Show password input and reset button
+  console.log('Please enter your new password to reset.');
+}
+
+function showLoggedInUI() {
+  console.log('Logged in successfully!');
+}
+
+handleAuthFromUrl();
