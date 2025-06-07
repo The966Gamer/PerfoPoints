@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Calendar, Clock, Settings, Sync, ChevronRight, ExternalLink } from "lucide-react";
+import { Calendar, Clock, Settings, RefreshCw, ChevronRight, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export function CalendarIntegration() {
@@ -43,7 +43,7 @@ export function CalendarIntegration() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sync className="h-5 w-5 text-primary" />
+              <RefreshCw className="h-5 w-5 text-primary" />
               Calendar Sync
             </CardTitle>
             <CardDescription>
@@ -93,7 +93,7 @@ export function CalendarIntegration() {
           <CardFooter>
             {syncEnabled ? (
               <Button variant="outline" className="w-full" onClick={handleSync}>
-                <Sync className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Sync Now
               </Button>
             ) : (

@@ -107,13 +107,13 @@ const Auth = () => {
   const handleSignup = async (values: z.infer<typeof signupSchema>) => {
     setLoading(true);
     try {
-      // Generate anonymous email if not provided
+      // Only generate anonymous email if no email provided
       const finalEmail = values.email || `${values.username}${Math.floor(Math.random() * 100000)}@perfopointsapp.com`;
       
       await signUp(finalEmail, values.password, values.username, values.fullName || values.username);
       
-      // Show verification sent message if real email
-      if (values.email) {
+      // Show verification sent message if real email was provided
+      if (values.email && values.email.trim() !== '') {
         setVerificationSent(true);
       } else {
         toast.success("Account created! You can now sign in");
