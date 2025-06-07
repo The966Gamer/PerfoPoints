@@ -47,7 +47,13 @@ export function UserDashboard() {
 
   // Add weekday tracking functionality for the planner
   const [today] = useState(new Date());
-  const [weekDays, setWeekDays] = useState<Array<{ day: string, date: Date, tasks: number, isToday?: boolean }>>([]);
+  const [weekDays, setWeekDays] = useState<Array<{ 
+    day: string, 
+    date: Date, 
+    tasks: number, 
+    isToday?: boolean,
+    hasDatePassed?: boolean 
+  }>>([]);
   
   // Generate the week days based on the current day
   useEffect(() => {

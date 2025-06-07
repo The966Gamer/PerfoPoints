@@ -34,7 +34,7 @@ export function useCustomRequests() {
           status: request.status as "pending" | "approved" | "rejected",
           createdAt: request.created_at,
           updatedAt: request.updated_at || undefined,
-          reviewedBy: request.reviewed_by || undefined,
+          reviewedBy: undefined, // Field doesn't exist in database yet
           username: (request.profiles as any)?.username || 'Unknown User'
         }));
         
