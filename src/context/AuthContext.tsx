@@ -325,10 +325,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Alias for signOut function 
   const logout = signOut;
 
-  // Register function
+  // Register function - now requires valid email
   const signUp = async (email: string, password: string, username: string, fullName: string = "") => {
     try {
       setLoading(true);
+      
+      // Validate email format
+      if (!email || !email.includes('@')) {
+        throw new Error("A valid email address is required for account creation.");
+      }
       
       // First check if username already exists
       const { data: existingUser, error: checkError } = await supabase
@@ -343,7 +348,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Username already exists. Please choose another username.");
       }
       
-      // Proceed with signup if username is available
+      // Proceed with signup with email verification
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -352,6 +357,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             username,
             fullName,
           },
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
       
@@ -360,12 +366,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data) {
-        // If using anonymous email, no need for verification
-        if (email.includes('@perfopointsapp.com')) {
-          toast.success("Account created successfully! You can now sign in.");
-        } else {
-          toast.success("Account created! Please check your email for verification.");
-        }
+        toast.success("Account created! Please check your email for verification.");
       }
     } catch (error: any) {
       console.error("Sign up error:", error);
@@ -384,6 +385,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
       });
       
       if (error) throw error;

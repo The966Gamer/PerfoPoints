@@ -18,16 +18,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Auth = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
-  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [resetPasswordEmail, setResetPasswordEmail] = useState("");
+  const [magicLinkEmail, setMagicLinkEmail] = useState("");
   const [showResetForm, setShowResetForm] = useState(false);
+  const [showMagicLinkForm, setShowMagicLinkForm] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   
   const { signIn, signUp, currentUser, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -37,11 +36,11 @@ const Auth = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Schema for signup form validation
+  // Schema for signup form validation - email is now required
   const signupSchema = z.object({
     username: z.string().min(3, { message: "Username must be at least 3 characters" }),
     fullName: z.string().optional(),
-    email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal("")),
+    email: z.string().email({ message: "Valid email address is required" }),
     password: z.string().min(6, { message: "Password must be at least 6 characters" })
   });
 
@@ -107,18 +106,8 @@ const Auth = () => {
   const handleSignup = async (values: z.infer<typeof signupSchema>) => {
     setLoading(true);
     try {
-      // Only generate anonymous email if no email provided
-      const finalEmail = values.email || `${values.username}${Math.floor(Math.random() * 100000)}@perfopointsapp.com`;
-      
-      await signUp(finalEmail, values.password, values.username, values.fullName || values.username);
-      
-      // Show verification sent message if real email was provided
-      if (values.email && values.email.trim() !== '') {
-        setVerificationSent(true);
-      } else {
-        toast.success("Account created! You can now sign in");
-        setActiveTab("login");
-      }
+      await signUp(values.email, values.password, values.username, values.fullName || values.username);
+      setVerificationSent(true);
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
     } finally {
@@ -145,13 +134,41 @@ const Auth = () => {
     }
   };
 
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!magicLinkEmail) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: magicLinkEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Magic link sent to your email");
+      setMagicLinkSent(true);
+      setShowMagicLinkForm(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send magic link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSendVerification = async () => {
     try {
       setLoading(true);
       
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email,
+        email: signupForm.getValues('email'),
       });
       
       if (error) throw error;
@@ -187,7 +204,7 @@ const Auth = () => {
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Verification Email Sent!</AlertTitle>
                   <AlertDescription>
-                    Please check your inbox and click the link to verify your email.
+                    Please check your inbox and click the link to verify your email before signing in.
                   </AlertDescription>
                 </Alert>
                 <div className="text-center mt-4">
@@ -205,6 +222,26 @@ const Auth = () => {
                   className="w-full" 
                   onClick={() => {
                     setVerificationSent(false);
+                    setActiveTab("login");
+                  }}
+                >
+                  Back to Login
+                </Button>
+              </div>
+            ) : magicLinkSent ? (
+              <div className="space-y-4">
+                <Alert>
+                  <Mail className="h-4 w-4" />
+                  <AlertTitle>Magic Link Sent!</AlertTitle>
+                  <AlertDescription>
+                    Check your email and click the magic link to sign in instantly.
+                  </AlertDescription>
+                </Alert>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => {
+                    setMagicLinkSent(false);
                     setActiveTab("login");
                   }}
                 >
@@ -232,6 +269,31 @@ const Auth = () => {
                   variant="ghost" 
                   className="w-full" 
                   onClick={() => setShowResetForm(false)}
+                >
+                  Back to Login
+                </Button>
+              </form>
+            ) : showMagicLinkForm ? (
+              <form onSubmit={handleMagicLink} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="magic-email">Email</Label>
+                  <Input
+                    id="magic-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={magicLinkEmail}
+                    onChange={(e) => setMagicLinkEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Sending..." : "Send Magic Link"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full" 
+                  onClick={() => setShowMagicLinkForm(false)}
                 >
                   Back to Login
                 </Button>
@@ -290,7 +352,7 @@ const Auth = () => {
                           </FormItem>
                         )}
                       />
-                      <div className="text-right">
+                      <div className="flex justify-between text-sm">
                         <Button 
                           type="button" 
                           variant="link" 
@@ -298,6 +360,14 @@ const Auth = () => {
                           onClick={() => setShowResetForm(true)}
                         >
                           Forgot password?
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="link" 
+                          className="px-0 text-sm h-auto"
+                          onClick={() => setShowMagicLinkForm(true)}
+                        >
+                          Magic link
                         </Button>
                       </div>
                       <Button type="submit" className="w-full" disabled={loading}>
@@ -347,7 +417,7 @@ const Auth = () => {
                         name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email (Optional)</FormLabel>
+                            <FormLabel>Email</FormLabel>
                             <FormControl>
                               <Input 
                                 type="email"
@@ -356,7 +426,7 @@ const Auth = () => {
                               />
                             </FormControl>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Email is optional, but required for password recovery
+                              Email is required for account verification and security
                             </p>
                             <FormMessage />
                           </FormItem>
