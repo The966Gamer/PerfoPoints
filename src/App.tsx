@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Index from "@/pages/Index";
 import Login from "@/pages/Login";
 import Auth from "@/pages/Auth";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 import AuthCallback from "@/pages/AuthCallback";
 import ProfilePage from "@/pages/ProfilePage";
@@ -31,6 +32,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/requests" element={<RequestsPage />} />

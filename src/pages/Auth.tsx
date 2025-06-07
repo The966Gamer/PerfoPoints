@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { ArrowLeft, Check, Eye, EyeOff, Mail, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -22,11 +22,8 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [resetPasswordEmail, setResetPasswordEmail] = useState("");
-  const [magicLinkEmail, setMagicLinkEmail] = useState("");
   const [showResetForm, setShowResetForm] = useState(false);
-  const [showMagicLinkForm, setShowMagicLinkForm] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
   
   const { signIn, signUp, currentUser, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -134,34 +131,6 @@ const Auth = () => {
     }
   };
 
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!magicLinkEmail) {
-      toast.error("Please enter your email address");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: magicLinkEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
-      });
-      
-      if (error) throw error;
-      
-      toast.success("Magic link sent to your email");
-      setMagicLinkSent(true);
-      setShowMagicLinkForm(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send magic link");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSendVerification = async () => {
     try {
       setLoading(true);
@@ -228,26 +197,6 @@ const Auth = () => {
                   Back to Login
                 </Button>
               </div>
-            ) : magicLinkSent ? (
-              <div className="space-y-4">
-                <Alert>
-                  <Mail className="h-4 w-4" />
-                  <AlertTitle>Magic Link Sent!</AlertTitle>
-                  <AlertDescription>
-                    Check your email and click the magic link to sign in instantly.
-                  </AlertDescription>
-                </Alert>
-                <Button 
-                  variant="outline" 
-                  className="w-full" 
-                  onClick={() => {
-                    setMagicLinkSent(false);
-                    setActiveTab("login");
-                  }}
-                >
-                  Back to Login
-                </Button>
-              </div>
             ) : showResetForm ? (
               <form onSubmit={handleResetPassword} className="space-y-4 mt-4">
                 <div className="space-y-2">
@@ -269,31 +218,6 @@ const Auth = () => {
                   variant="ghost" 
                   className="w-full" 
                   onClick={() => setShowResetForm(false)}
-                >
-                  Back to Login
-                </Button>
-              </form>
-            ) : showMagicLinkForm ? (
-              <form onSubmit={handleMagicLink} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="magic-email">Email</Label>
-                  <Input
-                    id="magic-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={magicLinkEmail}
-                    onChange={(e) => setMagicLinkEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Sending..." : "Send Magic Link"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  className="w-full" 
-                  onClick={() => setShowMagicLinkForm(false)}
                 >
                   Back to Login
                 </Button>
@@ -352,7 +276,7 @@ const Auth = () => {
                           </FormItem>
                         )}
                       />
-                      <div className="flex justify-between text-sm">
+                      <div className="text-left">
                         <Button 
                           type="button" 
                           variant="link" 
@@ -360,14 +284,6 @@ const Auth = () => {
                           onClick={() => setShowResetForm(true)}
                         >
                           Forgot password?
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="link" 
-                          className="px-0 text-sm h-auto"
-                          onClick={() => setShowMagicLinkForm(true)}
-                        >
-                          Magic link
                         </Button>
                       </div>
                       <Button type="submit" className="w-full" disabled={loading}>
