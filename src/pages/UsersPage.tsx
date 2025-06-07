@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Heading } from '@/components/ui/Heading';
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function UsersPage() {
-  const { updateProfile, currentUser } = useAuth();
+  const { currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -19,7 +20,6 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [giftDialogOpen, setGiftDialogOpen] = useState(false);
 
-  // Implement our own fetchUsers function
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -35,7 +35,6 @@ export default function UsersPage() {
       }
       
       if (data) {
-        // Map to the User type
         const mappedUsers: User[] = data.map(user => ({
           id: user.id,
           username: user.username,
@@ -77,16 +76,15 @@ export default function UsersPage() {
 
   const toggleUserBlock = async (user: User) => {
     try {
-      // Fix: Only pass one argument to updateProfile
-      const success = await updateProfile(user.id, {
-        isBlocked: !user.isBlocked
-      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_blocked: !user.isBlocked })
+        .eq('id', user.id);
+        
+      if (error) throw error;
       
-      // Fix: Check that success is truthy before showing toast
-      if (success) {
-        toast.success(`User ${user.isBlocked ? 'unblocked' : 'blocked'} successfully`);
-        fetchUsers();
-      }
+      toast.success(`User ${user.isBlocked ? 'unblocked' : 'blocked'} successfully`);
+      fetchUsers();
     } catch (error) {
       console.error("Error toggling user block status:", error);
       toast.error("Failed to update user status");
@@ -100,45 +98,7 @@ export default function UsersPage() {
 
   const handleCloseGiftDialog = () => {
     setGiftDialogOpen(false);
-    fetchUsers(); // Refresh users after dialog closes
-  };
-
-  const grantPoints = async (userId: string, points: number) => {
-    try {
-      if (!currentUser) return;
-      
-      await supabase.rpc('add_points', {
-        target_user_id: userId,
-        amount: points
-      });
-      
-      // Refresh users after granting points
-      fetchUsers();
-      toast.success(`Successfully granted ${points} points`);
-    } catch (error: any) {
-      console.error("Error granting points:", error);
-      toast.error(error.message);
-    }
-  };
-
-  const handleBlockUser = async (userId: string, isBlocked: boolean) => {
-    try {
-      if (!currentUser || !currentUser.role) return;
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_blocked: isBlocked })
-        .eq('id', userId);
-        
-      if (error) throw error;
-      
-      // Refresh users after blocking/unblocking
-      fetchUsers();
-      toast.success(`Successfully ${isBlocked ? 'blocked' : 'unblocked'} user`);
-    } catch (error: any) {
-      console.error("Error updating user block status:", error);
-      toast.error(error.message);
-    }
+    fetchUsers();
   };
 
   if (loading) {

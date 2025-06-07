@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
@@ -51,26 +52,29 @@ export function UserDashboard() {
   // Generate the week days based on the current day
   useEffect(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const currentDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1; // Convert to 0 = Monday
+    const currentDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
     
     const weekDaysList = days.map((day, index) => {
-      // Calculate the date for this weekday
       const date = new Date(today);
       date.setDate(today.getDate() - currentDayIndex + index);
       
-      // Generate a random number of tasks for now (this would ideally come from real data)
+      // Check if this date has passed
+      const hasDatePassed = date < new Date(new Date().setHours(0, 0, 0, 0));
+      
+      // Generate task count based on date
       let taskCount = 0;
       if (day === 'Wed' || day === 'Fri') {
-        taskCount = 1;
+        taskCount = hasDatePassed ? 1 : 1;
       } else if (day === 'Sat') {
-        taskCount = 2;
+        taskCount = hasDatePassed ? 2 : 2;
       }
       
       return {
         day,
         date,
         tasks: taskCount,
-        isToday: index === currentDayIndex
+        isToday: index === currentDayIndex,
+        hasDatePassed
       };
     });
     
@@ -157,7 +161,7 @@ export function UserDashboard() {
       {/* Prayer Tracker */}
       <PrayerTracker />
 
-      {/* New detailed User Stats */}
+      {/* User Stats */}
       <UserStats />
 
       <div className="flex flex-col sm:flex-row justify-between items-center">
@@ -255,7 +259,6 @@ export function UserDashboard() {
               </Card>
             </div>
             
-            {/* Premium Features Section */}
             <PremiumFeatures />
           </div>
         </TabsContent>
@@ -265,7 +268,7 @@ export function UserDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Weekly Calendar Preview with tracked days */}
+      {/* Weekly Calendar Preview with day tracking */}
       <Card className="glass-card">
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -288,14 +291,17 @@ export function UserDashboard() {
                   {format(dayInfo.date, 'MMM d')}
                 </div>
                 <div className={`mt-2 h-20 border rounded-md ${
-                  dayInfo.isToday ? 'bg-primary/10 border-primary/30' : 'bg-background/50'
+                  dayInfo.isToday ? 'bg-primary/10 border-primary/30' : 
+                  dayInfo.hasDatePassed ? 'bg-gray-100 dark:bg-gray-800 opacity-60' :
+                  'bg-background/50'
                 } flex items-center justify-center`}>
                   <div className="text-xs text-muted-foreground">
                     {dayInfo.tasks > 0 ? (
                       <div className={`${
                         dayInfo.tasks > 1 ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' : 'bg-primary/10 text-primary'
-                      } p-1 rounded`}>
+                      } p-1 rounded ${dayInfo.hasDatePassed ? 'opacity-60' : ''}`}>
                         {dayInfo.tasks} {dayInfo.tasks === 1 ? 'task' : 'tasks'}
+                        {dayInfo.hasDatePassed && <div className="text-xs mt-1">Past</div>}
                       </div>
                     ) : (
                       'No tasks'
