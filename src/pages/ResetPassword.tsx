@@ -30,25 +30,30 @@ const ResetPassword = () => {
         const refreshToken = searchParams.get('refresh_token');
         const type = searchParams.get('type');
 
+        console.log('URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+
         if (!accessToken || type !== 'recovery') {
+          console.log('Missing required params or wrong type');
           setIsValidToken(false);
           setIsCheckingToken(false);
           return;
         }
 
-        // Validate the tokens by attempting to set the session temporarily
+        // Check if tokens are valid by making a simple auth call
         const { data, error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken || '',
         });
 
+        console.log('Session validation result:', { data: !!data.session, error });
+
         if (error || !data.session) {
           console.error('Invalid reset token:', error);
           setIsValidToken(false);
         } else {
-          // Tokens are valid, but sign out immediately to prevent auto-login
-          await supabase.auth.signOut();
+          console.log('Valid tokens detected');
           setIsValidToken(true);
+          // Keep the session active for password reset
         }
       } catch (error) {
         console.error('Error checking reset token:', error);
@@ -76,20 +81,7 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
-
-      // Set the session with the recovery tokens
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken!,
-        refresh_token: refreshToken || '',
-      });
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      // Now update the password
+      // Update the password using the current session
       const { error } = await supabase.auth.updateUser({
         password: password
       });
