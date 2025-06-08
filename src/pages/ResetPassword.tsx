@@ -37,18 +37,8 @@ const ResetPassword = () => {
           return;
         }
 
-        // Verify the session with the tokens
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || '',
-        });
-
-        if (error) {
-          console.error('Invalid reset token:', error);
-          setIsValidToken(false);
-        } else {
-          setIsValidToken(true);
-        }
+        // Just validate the tokens exist and are for recovery - don't set the session yet
+        setIsValidToken(true);
       } catch (error) {
         console.error('Error checking reset token:', error);
         setIsValidToken(false);
@@ -75,6 +65,20 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
+
+      // Set the session with the recovery tokens
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken!,
+        refresh_token: refreshToken || '',
+      });
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      // Now update the password
       const { error } = await supabase.auth.updateUser({
         password: password
       });
