@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -37,8 +36,20 @@ const ResetPassword = () => {
           return;
         }
 
-        // Just validate the tokens exist and are for recovery - don't set the session yet
-        setIsValidToken(true);
+        // Validate the tokens by attempting to set the session temporarily
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || '',
+        });
+
+        if (error || !data.session) {
+          console.error('Invalid reset token:', error);
+          setIsValidToken(false);
+        } else {
+          // Tokens are valid, but sign out immediately to prevent auto-login
+          await supabase.auth.signOut();
+          setIsValidToken(true);
+        }
       } catch (error) {
         console.error('Error checking reset token:', error);
         setIsValidToken(false);
