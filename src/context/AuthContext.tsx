@@ -407,7 +407,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: 'https://perfopoints-rest-pass.netlify.app/',
       });
       
       if (error) {
