@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -79,6 +80,35 @@ export interface Message {
   createdAt: string;
 }
 
+// User Meter interface
+export interface UserMeter {
+  id: string;
+  userId: string;
+  meterType: string;
+  currentPercentage: number;
+  targetPercentage: number;
+  isActive: boolean;
+  createdBy?: string;
+  createdAt: string;
+  completedAt?: string;
+  prizeUnlocked: boolean;
+  description?: string;
+  username?: string; // For display purposes
+}
+
+// Meter History interface
+export interface MeterHistory {
+  id: string;
+  meterId: string;
+  userId: string;
+  oldPercentage: number;
+  newPercentage: number;
+  changeAmount: number;
+  changeReason?: string;
+  changedBy?: string;
+  changedAt: string;
+}
+
 // Database mapping types
 // Map types from database column names to our frontend naming convention
 export interface DbPointRequest {
@@ -149,6 +179,21 @@ export interface DbToFrontendMappings {
     reward_id: string;
     points_cost: number;
     created_at: string;
+  };
+
+  // User meter database mapping
+  DbUserMeter: {
+    id: string;
+    user_id: string;
+    meter_type: string;
+    current_percentage: number;
+    target_percentage: number;
+    is_active: boolean;
+    created_by?: string;
+    created_at: string;
+    completed_at?: string;
+    prize_unlocked: boolean;
+    description?: string;
   };
 }
 

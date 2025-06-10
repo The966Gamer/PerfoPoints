@@ -11,6 +11,7 @@ import { Leaderboard } from "./Leaderboard";
 import { UserStats } from "./UserStats";
 import { PremiumFeatures } from "./PremiumFeatures";
 import { PrayerTracker } from "./PrayerTracker";
+import { UserMeterDisplay } from "./UserMeterDisplay";
 import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -163,6 +164,9 @@ export function UserDashboard() {
           </div>
         </Card>
       </div>
+
+      {/* User Meter Display */}
+      <UserMeterDisplay />
 
       {/* Prayer Tracker */}
       <PrayerTracker />

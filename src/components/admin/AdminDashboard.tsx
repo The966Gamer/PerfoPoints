@@ -8,8 +8,9 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { RequestList } from "./RequestList";
-import { UserPlus, Award, CheckCircle, Calendar, TrendingUp, Users, FileText, ShieldAlert } from "lucide-react";
+import { UserPlus, Award, CheckCircle, Calendar, TrendingUp, Users, FileText, ShieldAlert, Gauge } from "lucide-react";
 import { PremiumAdminTools } from "./PremiumAdminTools";
+import { UserMeterManager } from "./UserMeterManager";
 
 export function AdminDashboard() {
   const { pointRequests, tasks, rewards, requests } = useData();
@@ -93,9 +94,12 @@ export function AdminDashboard() {
       </div>
       
       <Tabs defaultValue="requests">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="requests" className="flex items-center">
             <FileText className="h-4 w-4 mr-2" /> Requests
+          </TabsTrigger>
+          <TabsTrigger value="meters" className="flex items-center">
+            <Gauge className="h-4 w-4 mr-2" /> Meters
           </TabsTrigger>
           <TabsTrigger value="premium" className="flex items-center">
             <ShieldAlert className="h-4 w-4 mr-2" /> Premium Tools
@@ -107,6 +111,10 @@ export function AdminDashboard() {
         
         <TabsContent value="requests" className="space-y-4 mt-6">
           <RequestList />
+        </TabsContent>
+        
+        <TabsContent value="meters" className="space-y-4 mt-6">
+          <UserMeterManager />
         </TabsContent>
         
         <TabsContent value="premium" className="space-y-4 mt-6">

@@ -83,6 +83,50 @@ export type Database = {
           },
         ]
       }
+      meter_history: {
+        Row: {
+          change_amount: number
+          change_reason: string | null
+          changed_at: string
+          changed_by: string | null
+          id: string
+          meter_id: string
+          new_percentage: number
+          old_percentage: number
+          user_id: string
+        }
+        Insert: {
+          change_amount: number
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          meter_id: string
+          new_percentage: number
+          old_percentage: number
+          user_id: string
+        }
+        Update: {
+          change_amount?: number
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          meter_id?: string
+          new_percentage?: number
+          old_percentage?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meter_history_meter_id_fkey"
+            columns: ["meter_id"]
+            isOneToOne: false
+            referencedRelation: "user_meters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       point_requests: {
         Row: {
           comment: string | null
@@ -368,6 +412,48 @@ export type Database = {
           },
         ]
       }
+      user_meters: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          current_percentage: number
+          description: string | null
+          id: string
+          is_active: boolean
+          meter_type: string
+          prize_unlocked: boolean
+          target_percentage: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_percentage?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          meter_type?: string
+          prize_unlocked?: boolean
+          target_percentage?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_percentage?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          meter_type?: string
+          prize_unlocked?: boolean
+          target_percentage?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_tasks: {
         Row: {
           assigned_at: string
@@ -427,7 +513,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_meter_percentage: {
+        Args: {
+          p_user_id: string
+          p_percentage_change: number
+          p_reason?: string
+          p_changed_by?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
