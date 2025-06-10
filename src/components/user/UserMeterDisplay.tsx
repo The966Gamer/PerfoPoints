@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Gauge, Trophy, History, Calendar, TrendingUp, TrendingDown } from "lucide-react";
+import { Gauge, Trophy, History, Calendar, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
 export function UserMeterDisplay() {
@@ -14,8 +14,44 @@ export function UserMeterDisplay() {
   const { data: activeMeter, isLoading } = useActiveUserMeter(currentUser?.id || "");
   const { data: meterHistory } = useMeterHistory(activeMeter?.id || "");
 
-  if (isLoading || !activeMeter) {
-    return null;
+  if (isLoading) {
+    return (
+      <Card className="bg-gradient-to-br from-blue-500/10 to-blue-100/10 dark:from-blue-500/10 dark:to-blue-900/30 border-blue-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gauge className="h-5 w-5 text-blue-500" />
+            Loading Progress Meter...
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Progress value={0} className="h-3" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!activeMeter) {
+    return (
+      <Card className="bg-gradient-to-br from-gray-500/10 to-gray-100/10 dark:from-gray-500/10 dark:to-gray-900/30 border-gray-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-gray-500" />
+            No Active Progress Meter
+          </CardTitle>
+          <CardDescription>
+            Ask an admin to create a progress meter for you to start tracking your achievements!
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-4 bg-gray-500/10 rounded-lg border border-gray-500/20">
+            <Gauge className="h-8 w-8 text-gray-500 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Progress meters help you track your journey towards prizes and achievements.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const progressPercentage = (activeMeter.currentPercentage / activeMeter.targetPercentage) * 100;

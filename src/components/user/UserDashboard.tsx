@@ -12,12 +12,11 @@ import { UserStats } from "./UserStats";
 import { PremiumFeatures } from "./PremiumFeatures";
 import { PrayerTracker } from "./PrayerTracker";
 import { UserMeterDisplay } from "./UserMeterDisplay";
-import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown, Calendar } from "lucide-react";
+import { CalendarPlanner } from "./CalendarPlanner";
+import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CustomRequestFormDialog } from "./CustomRequestFormDialog";
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
 
 export function UserDashboard() {
   const { currentUser } = useAuth();
@@ -45,48 +44,6 @@ export function UserDashboard() {
       ...reward,
       category: "premium",
     }));
-
-  // Add weekday tracking functionality for the planner
-  const [today] = useState(new Date());
-  const [weekDays, setWeekDays] = useState<Array<{ 
-    day: string, 
-    date: Date, 
-    tasks: number, 
-    isToday?: boolean,
-    hasDatePassed?: boolean 
-  }>>([]);
-  
-  // Generate the week days based on the current day
-  useEffect(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const currentDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
-    
-    const weekDaysList = days.map((day, index) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() - currentDayIndex + index);
-      
-      // Check if this date has passed
-      const hasDatePassed = date < new Date(new Date().setHours(0, 0, 0, 0));
-      
-      // Generate task count based on date
-      let taskCount = 0;
-      if (day === 'Wed' || day === 'Fri') {
-        taskCount = hasDatePassed ? 1 : 1;
-      } else if (day === 'Sat') {
-        taskCount = hasDatePassed ? 2 : 2;
-      }
-      
-      return {
-        day,
-        date,
-        tasks: taskCount,
-        isToday: index === currentDayIndex,
-        hasDatePassed
-      };
-    });
-    
-    setWeekDays(weekDaysList);
-  }, [today]);
 
   return (
     <div className="grid gap-6">
@@ -278,51 +235,8 @@ export function UserDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Weekly Calendar Preview with day tracking */}
-      <Card className="glass-card">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center">
-              <Calendar className="h-5 w-5 mr-2 text-primary" />
-              Weekly Task Planner
-            </CardTitle>
-            <Button variant="outline" size="sm">Full Calendar</Button>
-          </div>
-          <CardDescription>Plan your week with these upcoming tasks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 gap-2">
-            {weekDays.map((dayInfo) => (
-              <div key={dayInfo.day} className="text-center">
-                <div className={`font-medium ${dayInfo.isToday ? 'text-primary' : ''}`}>
-                  {dayInfo.day}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {format(dayInfo.date, 'MMM d')}
-                </div>
-                <div className={`mt-2 h-20 border rounded-md ${
-                  dayInfo.isToday ? 'bg-primary/10 border-primary/30' : 
-                  dayInfo.hasDatePassed ? 'bg-gray-100 dark:bg-gray-800 opacity-60' :
-                  'bg-background/50'
-                } flex items-center justify-center`}>
-                  <div className="text-xs text-muted-foreground">
-                    {dayInfo.tasks > 0 ? (
-                      <div className={`${
-                        dayInfo.tasks > 1 ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' : 'bg-primary/10 text-primary'
-                      } p-1 rounded ${dayInfo.hasDatePassed ? 'opacity-60' : ''}`}>
-                        {dayInfo.tasks} {dayInfo.tasks === 1 ? 'task' : 'tasks'}
-                        {dayInfo.hasDatePassed && <div className="text-xs mt-1">Past</div>}
-                      </div>
-                    ) : (
-                      'No tasks'
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Weekly Calendar Planner with interactive functionality */}
+      <CalendarPlanner />
     </div>
   );
 }
