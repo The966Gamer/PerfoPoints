@@ -48,7 +48,7 @@ export function useUsers() {
         .from("profiles")
         .select("points")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
       
       if (fetchError) throw fetchError;
       

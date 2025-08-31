@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User } from "@/types";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useUsers } from "@/hooks/data/useUsers";
 
 interface AdminGiftDialogProps {
   open: boolean;
@@ -32,109 +32,7 @@ export function AdminGiftDialog({ open, onClose, user }: AdminGiftDialogProps) {
   const [reason, setReason] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Implement grant functions directly
-  const grantPoints = async (userId: string, amount: number, reason: string) => {
-    try {
-      // First get the current points from the profile
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('points')
-        .eq('id', userId)
-        .single();
-        
-      if (fetchError) throw fetchError;
-      
-      const currentPoints = profile.points || 0;
-      const newTotal = currentPoints + amount;
-      
-      // Update the user's points
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ points: newTotal })
-        .eq('id', userId);
-        
-      if (updateError) throw updateError;
-      
-      // Record the points transaction
-      const { error: historyError } = await supabase
-        .from('points_history')
-        .insert({
-          user_id: userId,
-          points: amount,
-          new_total: newTotal,
-          type: 'admin_gift',
-          reason
-        });
-        
-      if (historyError) throw historyError;
-      
-      toast.success(`Granted ${amount} points successfully!`);
-      return true;
-    } catch (error) {
-      console.error("Error granting points:", error);
-      toast.error("Failed to grant points");
-      return false;
-    }
-  };
-  
-  const grantKeys = async (userId: string, keyType: string, quantity: number, reason: string) => {
-    try {
-      // Check if user already has keys of this type
-      const { data: existingKeys, error: fetchError } = await supabase
-        .from('user_keys')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('key_type', keyType)
-        .maybeSingle();
-        
-      if (fetchError) throw fetchError;
-      
-      let newTotal = quantity;
-      
-      if (existingKeys) {
-        // Update existing keys
-        newTotal = existingKeys.quantity + quantity;
-        const { error: updateError } = await supabase
-          .from('user_keys')
-          .update({ quantity: newTotal })
-          .eq('id', existingKeys.id);
-          
-        if (updateError) throw updateError;
-      } else {
-        // Insert new key record
-        const { error: insertError } = await supabase
-          .from('user_keys')
-          .insert({
-            user_id: userId,
-            key_type: keyType,
-            quantity
-          });
-          
-        if (insertError) throw insertError;
-      }
-      
-      // Record key transaction in history
-      const { error: historyError } = await supabase
-        .from('keys_history')
-        .insert({
-          user_id: userId,
-          key_type: keyType,
-          quantity,
-          new_total: newTotal,
-          type: 'admin_gift',
-          reason
-        });
-        
-      if (historyError) throw historyError;
-      
-      toast.success(`Granted ${quantity} ${keyType} key(s) successfully!`);
-      return true;
-    } catch (error) {
-      console.error("Error granting keys:", error);
-      toast.error("Failed to grant keys");
-      return false;
-    }
-  };
+  const { grantPoints, grantKeys } = useUsers();
 
   const handleSubmit = async () => {
     if (!user) return;
@@ -150,9 +48,9 @@ export function AdminGiftDialog({ open, onClose, user }: AdminGiftDialogProps) {
         
         const success = await grantPoints(user.id, points, reason);
         if (success) {
-          onClose();
           setPoints(0);
           setReason("");
+          onClose();
         }
       } else {
         if (keyQuantity <= 0) {
@@ -163,9 +61,9 @@ export function AdminGiftDialog({ open, onClose, user }: AdminGiftDialogProps) {
         
         const success = await grantKeys(user.id, keyType, keyQuantity, reason);
         if (success) {
-          onClose();
           setKeyQuantity(0);
           setReason("");
+          onClose();
         }
       }
     } catch (error) {
