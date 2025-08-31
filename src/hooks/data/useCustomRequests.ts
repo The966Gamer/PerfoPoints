@@ -15,7 +15,7 @@ export function useCustomRequests() {
         .from('custom_requests')
         .select(`
           *,
-          profiles!custom_requests_user_id_fkey(username)
+          profiles!user_id(username)
         `)
         .order('created_at', { ascending: false });
 

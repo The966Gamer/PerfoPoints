@@ -13,13 +13,13 @@ export function usePointRequests() {
     try {
       setLoading(true);
       
-      // Join with profiles and tasks tables directly instead of using foreign key relationship
+      // Join with profiles and tasks tables using user_id and task_id
       const { data, error } = await supabase
         .from("point_requests")
         .select(`
           *,
-          profiles:profiles!point_requests_user_id_fkey(username),
-          tasks:tasks!point_requests_task_id_fkey(title, points_value)
+          profiles!user_id(username),
+          tasks!task_id(title, points_value)
         `)
         .order("created_at", { ascending: false });
       
