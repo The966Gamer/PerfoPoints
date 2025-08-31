@@ -18,6 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Auth = () => {
+  // All hooks must be at the top before any conditional returns
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,11 +28,6 @@ const Auth = () => {
   
   const { signIn, signUp, currentUser, resetPassword } = useAuth();
   const navigate = useNavigate();
-
-  // If user is already logged in, redirect to dashboard
-  if (currentUser) {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   // Schema for signup form validation - email is now required
   const signupSchema = z.object({
@@ -64,6 +60,11 @@ const Auth = () => {
       password: ""
     }
   });
+
+  // If user is already logged in, redirect to dashboard
+  if (currentUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setLoading(true);
