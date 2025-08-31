@@ -18,8 +18,8 @@ export function usePointRequests() {
         .from("point_requests")
         .select(`
           *,
-          profiles!user_id(username),
-          tasks!task_id(title, points_value)
+          profiles(username),
+          tasks(title, points_value)
         `)
         .order("created_at", { ascending: false });
       
