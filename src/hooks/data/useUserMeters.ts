@@ -29,7 +29,7 @@ export const useUserMeters = () => {
         .from("user_meters")
         .select(`
           *,
-          profiles (username)
+          profiles!user_id(username)
         `)
         .order("created_at", { ascending: false });
 
@@ -48,7 +48,7 @@ export const useUserMetersByUserId = (userId: string) => {
         .from("user_meters")
         .select(`
           *,
-          profiles (username)
+          profiles!user_id(username)
         `)
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
@@ -69,7 +69,7 @@ export const useActiveUserMeter = (userId: string) => {
         .from("user_meters")
         .select(`
           *,
-          profiles (username)
+          profiles!user_id(username)
         `)
         .eq("user_id", userId)
         .eq("is_active", true)
