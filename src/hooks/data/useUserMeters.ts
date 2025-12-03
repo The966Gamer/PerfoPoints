@@ -5,7 +5,7 @@ import { UserMeter, MeterHistory } from "@/types";
 import { toast } from "sonner";
 
 // Transform database meter to frontend format
-const transformMeter = (dbMeter: any): UserMeter => ({
+const transformMeter = (dbMeter: any, username?: string): UserMeter => ({
   id: dbMeter.id,
   userId: dbMeter.user_id,
   meterType: dbMeter.meter_type,
@@ -17,7 +17,7 @@ const transformMeter = (dbMeter: any): UserMeter => ({
   completedAt: dbMeter.completed_at,
   prizeUnlocked: dbMeter.prize_unlocked,
   description: dbMeter.description,
-  username: dbMeter.profiles?.username
+  username: username
 });
 
 // Hook to get all user meters (admin only)
@@ -25,16 +25,29 @@ export const useUserMeters = () => {
   return useQuery({
     queryKey: ["userMeters"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch meters
+      const { data: meters, error: metersError } = await supabase
         .from("user_meters")
-        .select(`
-          *,
-          profiles!user_id(username)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      return data.map(transformMeter);
+      if (metersError) throw metersError;
+      
+      if (!meters || meters.length === 0) return [];
+
+      // Get unique user IDs
+      const userIds = [...new Set(meters.map(m => m.user_id))];
+
+      // Fetch profiles separately
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", userIds);
+
+      // Create lookup map
+      const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+
+      return meters.map(m => transformMeter(m, profileMap.get(m.user_id)));
     },
   });
 };
@@ -44,17 +57,24 @@ export const useUserMetersByUserId = (userId: string) => {
   return useQuery({
     queryKey: ["userMeters", userId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: meters, error } = await supabase
         .from("user_meters")
-        .select(`
-          *,
-          profiles!user_id(username)
-        `)
+        .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data.map(transformMeter);
+      
+      if (!meters || meters.length === 0) return [];
+
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", userId)
+        .maybeSingle();
+
+      return meters.map(m => transformMeter(m, profile?.username));
     },
     enabled: !!userId,
   });
@@ -65,18 +85,24 @@ export const useActiveUserMeter = (userId: string) => {
   return useQuery({
     queryKey: ["activeUserMeter", userId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: meter, error } = await supabase
         .from("user_meters")
-        .select(`
-          *,
-          profiles!user_id(username)
-        `)
+        .select("*")
         .eq("user_id", userId)
         .eq("is_active", true)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== "PGRST116") throw error;
-      return data ? transformMeter(data) : null;
+      if (error) throw error;
+      if (!meter) return null;
+
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", userId)
+        .maybeSingle();
+
+      return transformMeter(meter, profile?.username);
     },
     enabled: !!userId,
   });
