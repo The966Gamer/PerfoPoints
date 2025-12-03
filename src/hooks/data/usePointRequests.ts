@@ -13,20 +13,41 @@ export function usePointRequests() {
     try {
       setLoading(true);
       
-      // Join with profiles and tasks tables using user_id and task_id
-      const { data, error } = await supabase
+      // Fetch point requests separately (no joins)
+      const { data: requests, error: requestsError } = await supabase
         .from("point_requests")
-        .select(`
-          *,
-          profiles!user_id(username),
-          tasks!task_id(title, points_value)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
       
-      if (error) throw error;
+      if (requestsError) throw requestsError;
+      
+      if (!requests || requests.length === 0) {
+        setPointRequests([]);
+        return;
+      }
+
+      // Get unique user IDs and task IDs
+      const userIds = [...new Set(requests.map(r => r.user_id))];
+      const taskIds = [...new Set(requests.map(r => r.task_id))];
+
+      // Fetch profiles separately
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", userIds);
+
+      // Fetch tasks separately
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("id, title, points_value")
+        .in("id", taskIds);
+
+      // Create lookup maps
+      const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+      const taskMap = new Map(tasks?.map(t => [t.id, { title: t.title, points_value: t.points_value }]) || []);
       
       // Map database columns to frontend naming
-      const mappedPointRequests: PointRequest[] = data.map(req => ({
+      const mappedPointRequests: PointRequest[] = requests.map(req => ({
         id: req.id,
         userId: req.user_id,
         taskId: req.task_id,
@@ -36,9 +57,9 @@ export function usePointRequests() {
         reviewedBy: req.reviewed_by,
         photoUrl: req.photo_url,
         comment: req.comment,
-        taskTitle: (req.tasks as any)?.title,
-        pointValue: (req.tasks as any)?.points_value,
-        username: (req.profiles as any)?.username
+        taskTitle: taskMap.get(req.task_id)?.title || "Unknown Task",
+        pointValue: taskMap.get(req.task_id)?.points_value || 0,
+        username: profileMap.get(req.user_id) || "Unknown User"
       }));
       
       setPointRequests(mappedPointRequests);
@@ -57,15 +78,6 @@ export function usePointRequests() {
       const userId = user.data.user?.id;
       if (!userId) throw new Error("No user logged in");
       
-      // Get task details for the request
-      const { data: task, error: taskError } = await supabase
-        .from("tasks")
-        .select("title, points_value")
-        .eq("id", taskId)
-        .single();
-      
-      if (taskError) throw taskError;
-      
       const { error } = await supabase
         .from("point_requests")
         .insert([{ 
@@ -79,9 +91,6 @@ export function usePointRequests() {
       
       toast.success("Point request submitted successfully!");
       fetchPointRequests();
-      
-      // Create notification in a simpler way
-      console.log("Creating notification for task completion");
       toast.info("Administrators have been notified about your request!");
     } catch (error: any) {
       console.error("Error submitting point request:", error);
@@ -152,7 +161,6 @@ export function usePointRequests() {
     fetchPointRequests,
     submitPointRequest,
     reviewPointRequest,
-    // Alias for compatibility
     createPointRequest: submitPointRequest
   };
 }

@@ -11,35 +11,49 @@ export function useCustomRequests() {
   const fetchCustomRequests = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch custom requests separately (no joins)
+      const { data: requests, error: requestsError } = await supabase
         .from('custom_requests')
-        .select(`
-          *,
-          profiles!user_id(username)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching custom requests:', error);
+      if (requestsError) {
+        console.error('Error fetching custom requests:', requestsError);
         return;
       }
 
-      if (data) {
-        const mappedRequests: CustomRequest[] = data.map(request => ({
-          id: request.id,
-          userId: request.user_id,
-          title: request.title,
-          description: request.description || undefined,
-          type: request.type as "task" | "reward" | "other",
-          status: request.status as "pending" | "approved" | "rejected",
-          createdAt: request.created_at,
-          updatedAt: request.updated_at || undefined,
-          reviewedBy: undefined, // Field doesn't exist in database yet
-          username: (request.profiles as any)?.username || 'Unknown User'
-        }));
-        
-        setCustomRequests(mappedRequests);
+      if (!requests || requests.length === 0) {
+        setCustomRequests([]);
+        return;
       }
+
+      // Get unique user IDs
+      const userIds = [...new Set(requests.map(r => r.user_id))];
+
+      // Fetch profiles separately
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+
+      // Create lookup map
+      const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+
+      const mappedRequests: CustomRequest[] = requests.map(request => ({
+        id: request.id,
+        userId: request.user_id,
+        title: request.title,
+        description: request.description || undefined,
+        type: request.type as "task" | "reward" | "other",
+        status: request.status as "pending" | "approved" | "rejected",
+        createdAt: request.created_at || '',
+        updatedAt: request.updated_at || undefined,
+        reviewedBy: undefined,
+        username: profileMap.get(request.user_id) || 'Unknown User'
+      }));
+      
+      setCustomRequests(mappedRequests);
     } catch (error) {
       console.error('Error in fetchCustomRequests:', error);
       toast.error('Failed to load custom requests');
