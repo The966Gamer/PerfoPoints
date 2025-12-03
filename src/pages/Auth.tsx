@@ -164,7 +164,7 @@ const Auth = () => {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">Perfo Points</CardTitle>
             <CardDescription className="text-center">
-              Premium Family Rewards System
+              Family Rewards System
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -388,7 +388,7 @@ const Auth = () => {
           </CardContent>
           <CardFooter className="flex justify-center">
             <div className="text-sm text-center text-muted-foreground">
-              <p>Secure, Premium Family Rewards System</p>
+              <p>Secure Family Rewards System</p>
             </div>
           </CardFooter>
         </Card>

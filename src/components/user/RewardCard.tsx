@@ -5,19 +5,18 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Gift, Award, Key, Lock, Sparkles } from "lucide-react";
+import { Key, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 interface RewardCardProps {
   reward: Reward;
-  isPremium?: boolean;
 }
 
-export function RewardCard({ reward, isPremium }: RewardCardProps) {
+export function RewardCard({ reward }: RewardCardProps) {
   const { redeemReward } = useData();
   const { currentUser } = useAuth();
   const [redeeming, setRedeeming] = useState(false);
@@ -44,7 +43,6 @@ export function RewardCard({ reward, isPremium }: RewardCardProps) {
     try {
       setRedeeming(true);
       
-      // In a real app, this would validate the key on the server
       if (approvalKey.trim().length < 3) {
         toast.error("Please enter a valid approval key");
         return;
@@ -59,17 +57,10 @@ export function RewardCard({ reward, isPremium }: RewardCardProps) {
   };
   
   return (
-    <Card className={`reward-card ${isPremium ? 'bg-gradient-to-br from-yellow-500/30 to-white dark:from-yellow-500/20 dark:to-gray-800/60 border-yellow-500/30' : ''}`}>
+    <Card className="reward-card">
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-lg">{reward.title}</CardTitle>
-            {isPremium && (
-              <Badge variant="outline" className="bg-yellow-500/20 border-yellow-500 text-yellow-700 dark:text-yellow-300">
-                <Sparkles className="h-3 w-3 mr-1" /> Premium
-              </Badge>
-            )}
-          </div>
+          <CardTitle className="text-lg">{reward.title}</CardTitle>
           <div className="points-badge bg-secondary text-secondary-foreground">
             {reward.pointCost}
           </div>
@@ -93,7 +84,7 @@ export function RewardCard({ reward, isPremium }: RewardCardProps) {
         <Button 
           onClick={handleRedeemReward} 
           disabled={!canAfford || redeeming}
-          variant={canAfford ? (isPremium ? "secondary" : "default") : "outline"}
+          variant={canAfford ? "default" : "outline"}
           className="w-full"
         >
           {!canAfford ? (
@@ -103,10 +94,7 @@ export function RewardCard({ reward, isPremium }: RewardCardProps) {
           ) : redeeming ? (
             "Redeeming..."
           ) : (
-            <span className="flex items-center justify-center">
-              {isPremium && <Sparkles className="h-4 w-4 mr-2" />}
-              Redeem Reward
-            </span>
+            "Redeem Reward"
           )}
         </Button>
         
