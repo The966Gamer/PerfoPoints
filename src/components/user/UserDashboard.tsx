@@ -9,11 +9,10 @@ import { TaskCard } from "./task";
 import { RewardCard } from "./RewardCard";
 import { Leaderboard } from "./Leaderboard";
 import { UserStats } from "./UserStats";
-import { PremiumFeatures } from "./PremiumFeatures";
 import { PrayerTracker } from "./PrayerTracker";
 import { UserMeterDisplay } from "./UserMeterDisplay";
 import { CalendarPlanner } from "./CalendarPlanner";
-import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight, Crown } from "lucide-react";
+import { CalendarCheck, Gift, Trophy, Sparkles, Medal, Award, ArrowRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CustomRequestFormDialog } from "./CustomRequestFormDialog";
@@ -35,15 +34,6 @@ export function UserDashboard() {
   const affordableRewards = rewards
     .filter(reward => reward.pointCost <= currentUser.points)
     .slice(0, 3);
-  
-  // Generate some premium rewards
-  const premiumRewards = rewards
-    .filter(reward => reward.pointCost > currentUser.points * 0.8)
-    .slice(0, 2)
-    .map(reward => ({
-      ...reward,
-      category: "premium",
-    }));
 
   return (
     <div className="grid gap-6">
@@ -143,15 +133,12 @@ export function UserDashboard() {
       </div>
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tasks" className="flex items-center gap-2">
             <CalendarCheck className="h-4 w-4" /> Tasks
           </TabsTrigger>
           <TabsTrigger value="rewards" className="flex items-center gap-2">
             <Gift className="h-4 w-4" /> Rewards
-          </TabsTrigger>
-          <TabsTrigger value="premium" className="flex items-center gap-2">
-            <Crown className="h-4 w-4" /> Premium
           </TabsTrigger>
           <TabsTrigger value="leaderboard" className="flex items-center gap-2">
             <Trophy className="h-4 w-4" /> Leaderboard
@@ -197,36 +184,6 @@ export function UserDashboard() {
                 </p>
               </div>
             )}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="premium" className="mt-6">
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium flex items-center">
-                <Crown className="h-5 w-5 mr-2 text-yellow-500" />
-                Premium Rewards
-              </h3>
-              <Button variant="secondary" size="sm" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/30">
-                View Premium Plan
-              </Button>
-            </div>
-            
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {premiumRewards.map(reward => (
-                <RewardCard key={reward.id} reward={reward} isPremium={true} />
-              ))}
-              <Card className="reward-card bg-gradient-to-br from-yellow-500/10 to-yellow-100/10 dark:from-yellow-500/10 dark:to-yellow-900/30 border-yellow-500/20 flex flex-col items-center justify-center p-6 text-center">
-                <Crown className="h-10 w-10 text-yellow-500 mb-3" />
-                <h3 className="font-medium text-lg mb-2">Unlock Premium</h3>
-                <p className="text-sm text-muted-foreground mb-4">Get access to exclusive rewards and premium features</p>
-                <Button variant="secondary" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/30">
-                  Upgrade Now
-                </Button>
-              </Card>
-            </div>
-            
-            <PremiumFeatures />
           </div>
         </TabsContent>
         
