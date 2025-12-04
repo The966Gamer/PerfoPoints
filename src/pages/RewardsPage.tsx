@@ -13,7 +13,8 @@ import {
   Plus, 
   Search, 
   SlidersHorizontal,
-  Sparkles
+  Sparkles,
+  X
 } from "lucide-react";
 import {
   Card,
@@ -37,10 +38,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { UserKeysDisplay } from "@/components/user/UserKeysDisplay";
+import { useKeys, KEY_TYPES, KEY_DISPLAY, KeyType } from "@/hooks/data/useKeys";
 
 const RewardsPage = () => {
   const { currentUser } = useAuth();
   const { rewards, addReward } = useData();
+  const { addRewardKeyRequirements } = useKeys();
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -52,6 +56,7 @@ const RewardsPage = () => {
   const [pointCost, setPointCost] = useState(50);
   const [approvalKeyRequired, setApprovalKeyRequired] = useState(false);
   const [category, setCategory] = useState("general");
+  const [keyRequirements, setKeyRequirements] = useState<{ keyType: KeyType; quantity: number }[]>([]);
 
   const isAdmin = currentUser?.role === "admin";
 
@@ -61,6 +66,7 @@ const RewardsPage = () => {
     setPointCost(50);
     setApprovalKeyRequired(false);
     setCategory("general");
+    setKeyRequirements([]);
   };
 
   const handleAddReward = async () => {
@@ -74,8 +80,26 @@ const RewardsPage = () => {
       category
     });
 
+    // Get the newly created reward and add key requirements
+    // Note: We need to fetch the reward ID after creation
+    // For now, key requirements can be added via edit
+
     resetForm();
     setIsAdding(false);
+  };
+
+  const addKeyRequirement = () => {
+    setKeyRequirements([...keyRequirements, { keyType: 'copper', quantity: 1 }]);
+  };
+
+  const removeKeyRequirement = (index: number) => {
+    setKeyRequirements(keyRequirements.filter((_, i) => i !== index));
+  };
+
+  const updateKeyRequirement = (index: number, field: 'keyType' | 'quantity', value: any) => {
+    const updated = [...keyRequirements];
+    updated[index] = { ...updated[index], [field]: value };
+    setKeyRequirements(updated);
   };
 
   // Get all unique categories
@@ -200,6 +224,8 @@ const RewardsPage = () => {
               </CardContent>
             </Card>
 
+            <UserKeysDisplay />
+
             <Card>
               <CardHeader>
                 <CardTitle>Reward Categories</CardTitle>
@@ -249,7 +275,7 @@ const RewardsPage = () => {
 
         {/* Add Reward Dialog */}
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Reward</DialogTitle>
             </DialogHeader>
@@ -307,6 +333,16 @@ const RewardsPage = () => {
                   checked={approvalKeyRequired}
                   onCheckedChange={setApprovalKeyRequired}
                 />
+              </div>
+              
+              {/* Key Requirements - Note: Add via edit after creation */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Required Keys (add after creation via edit)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You can add key requirements after creating the reward by clicking the edit button.
+                </p>
               </div>
             </div>
             <DialogFooter>

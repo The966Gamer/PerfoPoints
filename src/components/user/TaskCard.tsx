@@ -3,8 +3,8 @@ import { Task } from "@/types";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/context/DataContext";
-import { useState } from "react";
-import { Check, Clock, Image, Loader2, X, Edit, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, Clock, Image, Loader2, X, Edit, Trash2, Plus, KeyRound } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -13,9 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "next-themes";
+import { useKeys, KEY_TYPES, KEY_DISPLAY, KeyType, TaskKeyReward } from "@/hooks/data/useKeys";
 
 interface TaskCardProps {
   task: Task;
@@ -25,6 +27,7 @@ export function TaskCard({ task }: TaskCardProps) {
   const { currentUser } = useAuth();
   const { createPointRequest, requests, updateTask, deleteTask } = useData();
   const { theme } = useTheme();
+  const { fetchTaskKeyRewards, addTaskKeyRewards } = useKeys();
   
   const [requesting, setRequesting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -33,6 +36,7 @@ export function TaskCard({ task }: TaskCardProps) {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [keyRewards, setKeyRewards] = useState<TaskKeyReward[]>([]);
   
   // Edit dialog state
   const [isEditing, setIsEditing] = useState(false);
@@ -41,6 +45,7 @@ export function TaskCard({ task }: TaskCardProps) {
   const [editPointValue, setEditPointValue] = useState(task.pointValue);
   const [editCategory, setEditCategory] = useState(task.category || "general");
   const [editRecurring, setEditRecurring] = useState(task.recurring || false);
+  const [editKeyRewards, setEditKeyRewards] = useState<{ keyType: KeyType; quantity: number }[]>([]);
   
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -51,6 +56,14 @@ export function TaskCard({ task }: TaskCardProps) {
   const hasPendingRequest = requests.some(
     req => req.taskId === task.id && req.status === "pending"
   );
+
+  useEffect(() => {
+    const loadKeyRewards = async () => {
+      const rewards = await fetchTaskKeyRewards(task.id);
+      setKeyRewards(rewards);
+    };
+    loadKeyRewards();
+  }, [task.id]);
   
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -166,7 +179,15 @@ export function TaskCard({ task }: TaskCardProps) {
         category: editCategory,
         recurring: editRecurring
       });
+      
+      // Update key rewards
+      await addTaskKeyRewards(task.id, editKeyRewards);
+      
       setIsEditing(false);
+      
+      // Refresh key rewards
+      const rewards = await fetchTaskKeyRewards(task.id);
+      setKeyRewards(rewards);
     } catch (error) {
       toast.error("Failed to update task");
     }
@@ -181,13 +202,32 @@ export function TaskCard({ task }: TaskCardProps) {
     }
   };
   
-  const openEditDialog = () => {
+  const openEditDialog = async () => {
     setEditTitle(task.title);
     setEditDescription(task.description);
     setEditPointValue(task.pointValue);
     setEditCategory(task.category || "general");
     setEditRecurring(task.recurring || false);
+    
+    // Load existing key rewards
+    const rewards = await fetchTaskKeyRewards(task.id);
+    setEditKeyRewards(rewards.map(r => ({ keyType: r.keyType, quantity: r.quantity })));
+    
     setIsEditing(true);
+  };
+
+  const addKeyReward = () => {
+    setEditKeyRewards([...editKeyRewards, { keyType: 'copper', quantity: 1 }]);
+  };
+
+  const removeKeyReward = (index: number) => {
+    setEditKeyRewards(editKeyRewards.filter((_, i) => i !== index));
+  };
+
+  const updateKeyReward = (index: number, field: 'keyType' | 'quantity', value: any) => {
+    const updated = [...editKeyRewards];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditKeyRewards(updated);
   };
   
   return (
@@ -219,6 +259,21 @@ export function TaskCard({ task }: TaskCardProps) {
         </CardHeader>
         <CardContent className="p-4 pt-0 pb-2">
           <p className="text-sm text-muted-foreground">{task.description}</p>
+          
+          {/* Key Rewards Display */}
+          {keyRewards.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              <KeyRound className="h-4 w-4 text-amber-500 mr-1" />
+              {keyRewards.map((kr, i) => {
+                const keyInfo = KEY_DISPLAY[kr.keyType];
+                return (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {keyInfo.emoji} +{kr.quantity} {keyInfo.name}
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
           
           {task.deadline && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
@@ -354,7 +409,7 @@ export function TaskCard({ task }: TaskCardProps) {
 
       {/* Edit Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
@@ -413,6 +468,50 @@ export function TaskCard({ task }: TaskCardProps) {
                 onChange={(e) => setEditRecurring(e.target.checked)}
               />
               <Label htmlFor="edit-recurring">Recurring task</Label>
+            </div>
+            
+            {/* Key Rewards */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Key Rewards</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addKeyReward}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Key
+                </Button>
+              </div>
+              {editKeyRewards.map((kr, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Select 
+                    value={kr.keyType} 
+                    onValueChange={(v) => updateKeyReward(index, 'keyType', v)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {KEY_TYPES.map(kt => (
+                        <SelectItem key={kt} value={kt}>
+                          {KEY_DISPLAY[kt].emoji} {KEY_DISPLAY[kt].name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={kr.quantity}
+                    onChange={(e) => updateKeyReward(index, 'quantity', parseInt(e.target.value) || 1)}
+                    className="w-20"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => removeKeyReward(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
           <DialogFooter>
