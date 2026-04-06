@@ -368,33 +368,34 @@ export function SupabasePerfoPointsApp() {
     event.preventDefault();
     try {
       setBackendMessage(null);
+      const email = signupForm.email.trim();
+      const username = signupForm.username.trim().toLowerCase();
+      const displayName = signupForm.displayName.trim();
+      const password = signupForm.password;
+
       const { data, error } = await supabase.auth.signUp({
-        email: signupForm.email.trim(),
-        password: signupForm.password,
+        email,
+        password,
         options: {
           data: {
-            username: signupForm.username.trim().toLowerCase(),
-            fullName: signupForm.displayName.trim(),
+            username,
+            fullName: displayName,
           },
         },
       });
       if (error) throw error;
-
-      const email = signupForm.email.trim();
-      const username = signupForm.username.trim().toLowerCase();
-      const displayName = signupForm.displayName.trim();
       const hasSession = Boolean(data.session);
 
       if (data.user && hasSession) {
-        await ensureProfile(data.user, signupForm.username.trim().toLowerCase(), signupForm.displayName.trim());
+        await ensureProfile(data.user, username, displayName);
       }
-      setSignupForm({ email: "", username: "", displayName: "", password: "" });
 
       if (hasSession) {
         if (data.user) {
-          setAdminPassword(signupForm.password);
+          setAdminPassword(password);
           await fetchAppData(data.user.id);
         }
+        setSignupForm({ email: "", username: "", displayName: "", password: "" });
         setPendingVerificationEmail("");
         toast.success("Account created and signed in.");
         return;
@@ -402,13 +403,6 @@ export function SupabasePerfoPointsApp() {
 
       setPendingVerificationEmail(email);
       toast.success(`Account created. Confirm ${email} from your email, then sign in.`);
-      if (data.user) {
-        try {
-          await ensureProfile(data.user, username, displayName);
-        } catch (error: any) {
-          console.error(error);
-        }
-      }
     } catch (error: any) {
       handleAppError(error, "Signup failed.");
     }
@@ -429,6 +423,10 @@ export function SupabasePerfoPointsApp() {
     } catch (error: any) {
       handleAppError(error, "Could not resend the confirmation email.");
     }
+  };
+
+  const handleEditPendingSignup = () => {
+    setPendingVerificationEmail("");
   };
 
   const handleForgotPassword = async () => {
@@ -1094,6 +1092,7 @@ export function SupabasePerfoPointsApp() {
             onSignup={handleSignup}
             onResetPassword={handleForgotPassword}
             onResendVerification={handleResendVerification}
+            onEditPendingSignup={handleEditPendingSignup}
             themeSwitch={<ThemeSwitch />}
             backendMessage={effectiveBackendMessage}
             pendingVerificationEmail={pendingVerificationEmail}

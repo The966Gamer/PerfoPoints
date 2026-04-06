@@ -16,6 +16,7 @@ export function LoginView({
   onSignup,
   onResetPassword,
   onResendVerification,
+  onEditPendingSignup,
   themeSwitch,
   backendMessage,
   pendingVerificationEmail,
@@ -30,6 +31,7 @@ export function LoginView({
   onSignup: (event: FormEvent<HTMLFormElement>) => void;
   onResetPassword: () => void;
   onResendVerification: () => void;
+  onEditPendingSignup: () => void;
   themeSwitch: React.ReactNode;
   backendMessage: string | null;
   pendingVerificationEmail: string;
@@ -200,6 +202,20 @@ export function LoginView({
                           <Button type="button" className="w-full rounded-full" onClick={onResendVerification}>
                             <Mail className="h-4 w-4" />
                             Resend confirmation email
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full rounded-full"
+                            onClick={() => {
+                              onEditPendingSignup();
+                              setShowSignup(true);
+                              setShowSignin(false);
+                              setShowReset(false);
+                            }}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            Wrong email? Change it
                           </Button>
                           <Button type="button" variant="secondary" className="w-full rounded-full" onClick={() => setShowSignin(true)}>
                             <Lock className="h-4 w-4" />
