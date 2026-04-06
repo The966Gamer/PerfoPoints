@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ThemeSwitch } from "@/perfo/PerfoBits";
 import { AdminView } from "@/perfo/AdminView";
 import { LoginView } from "@/perfo/LoginView";
-import { UserView } from "@/perfo/UserView";
+import { UserDashboardView } from "@/perfo/UserDashboardView";
 import { emptyRewardForm, emptyTaskForm, emptyUserForm, formatDate, isSameDay } from "@/perfo/data";
 import { FamilyAppState, FamilyUser, RewardItem, TaskItem, UserEditFormState } from "@/perfo/types";
 
@@ -120,7 +120,18 @@ export function SupabasePerfoPointsApp() {
   const ensureProfile = async (user: { id: string; email?: string }, username?: string, displayName?: string) => {
     const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
     if (profileError) throw profileError;
-    if (profile) return profile;
+    if (profile) {
+      const updates: Record<string, string> = {};
+      if (user.email && profile.email !== user.email) updates.email = user.email;
+      if (username && profile.username !== username) updates.username = username;
+      if (displayName && profile.full_name !== displayName) updates.full_name = displayName;
+      if (Object.keys(updates).length > 0) {
+        const { data: updated, error } = await supabase.from("profiles").update(updates).eq("id", user.id).select().single();
+        if (error) throw error;
+        return updated;
+      }
+      return profile;
+    }
 
     const payload = {
       id: user.id,
@@ -880,6 +891,67 @@ export function SupabasePerfoPointsApp() {
     }
   };
 
+  const handleSaveOwnSettings = async ({ username, displayName, email }: { username: string; displayName: string; email: string }) => {
+    if (!currentUser) return;
+
+    const trimmedUsername = username.trim().toLowerCase();
+    const trimmedDisplayName = displayName.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedUsername || !trimmedDisplayName || !trimmedEmail) {
+      toast.error("Username, display name, and email are all required.");
+      return;
+    }
+
+    try {
+      const emailChanged = trimmedEmail !== currentUser.email.toLowerCase();
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          username: trimmedUsername,
+          full_name: trimmedDisplayName,
+          ...(emailChanged ? {} : { email: trimmedEmail }),
+        })
+        .eq("id", currentUser.id);
+      if (profileError) throw profileError;
+
+      const { error: authError } = await supabase.auth.updateUser({
+        ...(emailChanged ? { email: trimmedEmail } : {}),
+        data: {
+          username: trimmedUsername,
+          fullName: trimmedDisplayName,
+        },
+      });
+      if (authError) throw authError;
+
+      await fetchAppData(currentUser.id);
+      toast.success(emailChanged ? `Profile updated. Confirm ${trimmedEmail} from your email to finish the change.` : "Profile updated.");
+    } catch (error: any) {
+      toast.error(getFriendlyErrorMessage(error, "Could not update your settings."));
+    }
+  };
+
+  const handleChangeOwnPassword = async ({ password, confirmPassword }: { password: string; confirmPassword: string }) => {
+    if (!currentUser) return;
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      toast.success("Password updated.");
+    } catch (error: any) {
+      toast.error(getFriendlyErrorMessage(error, "Could not update your password."));
+    }
+  };
+
   const loadTaskForEdit = (taskId: string) => {
     const task = appState.tasks.find((entry) => entry.id === taskId);
     if (!task) return;
@@ -1067,7 +1139,7 @@ export function SupabasePerfoPointsApp() {
             onDailyLimitChange={() => toast.message("Daily redemption limit is still UI-only in this pass.")}
           />
         ) : (
-          <UserView
+          <UserDashboardView
             appState={appState}
             currentUser={currentUser}
             visibleTasks={visibleTasks}
@@ -1081,6 +1153,8 @@ export function SupabasePerfoPointsApp() {
             onSubmitPointRequest={handleSubmitPointRequest}
             onRedeemReward={handleRedeemReward}
             onUpdateSalahToday={handleUpdateSalahToday}
+            onSaveOwnSettings={handleSaveOwnSettings}
+            onChangeOwnPassword={handleChangeOwnPassword}
           />
         )}
       </div>
