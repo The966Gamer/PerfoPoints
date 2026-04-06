@@ -29,6 +29,7 @@ export function LoginView({
   themeSwitch: React.ReactNode;
 }) {
   const [step, setStep] = useState<"intro" | "features" | "auth">("intro");
+  const [showSignin, setShowSignin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showReset, setShowReset] = useState(false);
 
@@ -45,7 +46,7 @@ export function LoginView({
             </div>
 
             {step === "intro" ? (
-              <div className="flex flex-1 flex-col justify-center">
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
                 <CardTitle className="max-w-5xl text-6xl font-black uppercase tracking-[0.12em] sm:text-7xl lg:text-[8rem]">
                   PERFO POINTS
                 </CardTitle>
@@ -59,6 +60,7 @@ export function LoginView({
                     className="h-16 rounded-full text-base font-bold uppercase tracking-[0.18em]"
                     onClick={() => {
                       setStep("features");
+                      setShowSignin(false);
                       setShowSignup(false);
                       setShowReset(false);
                     }}
@@ -71,7 +73,7 @@ export function LoginView({
             ) : null}
 
             {step === "features" ? (
-              <div className="flex flex-1 flex-col justify-center">
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
                 <div className="max-w-3xl">
                   <CardTitle className="text-4xl font-black uppercase tracking-[0.1em] sm:text-5xl">
                     Why Families Use It
@@ -93,6 +95,7 @@ export function LoginView({
                     className="h-14 rounded-full px-8 text-base font-bold uppercase tracking-[0.14em]"
                     onClick={() => {
                       setStep("auth");
+                      setShowSignin(false);
                       setShowSignup(false);
                       setShowReset(false);
                     }}
@@ -113,7 +116,7 @@ export function LoginView({
             ) : null}
 
             {step === "auth" ? (
-              <div className="flex flex-1 flex-col justify-center">
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
                 <div className="max-w-3xl">
                   <CardTitle className="text-4xl font-black uppercase tracking-[0.1em] sm:text-5xl">
                     Choose Your Start
@@ -127,6 +130,7 @@ export function LoginView({
                     type="button"
                     className="h-14 flex-1 rounded-full text-base font-bold uppercase tracking-[0.1em]"
                     onClick={() => {
+                      setShowSignin(true);
                       setShowSignup(false);
                       setShowReset(false);
                     }}
@@ -139,6 +143,7 @@ export function LoginView({
                     variant="secondary"
                     className="h-14 flex-1 rounded-full text-base font-bold uppercase tracking-[0.1em]"
                     onClick={() => {
+                      setShowSignin(false);
                       setShowSignup(true);
                       setShowReset(false);
                     }}
@@ -152,7 +157,12 @@ export function LoginView({
                     type="button"
                     variant="ghost"
                     className="h-12 rounded-full px-0"
-                    onClick={() => setStep("features")}
+                    onClick={() => {
+                      setStep("features");
+                      setShowSignin(false);
+                      setShowSignup(false);
+                      setShowReset(false);
+                    }}
                   >
                     Back to features
                   </Button>
@@ -163,7 +173,7 @@ export function LoginView({
         </CardContent>
       </Card>
 
-      {step === "auth" && !showSignup ? (
+      {step === "auth" && showSignin ? (
           <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
             <CardHeader>
               <CardTitle>Sign in</CardTitle>
@@ -181,6 +191,7 @@ export function LoginView({
                 </Button>
                 <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => {
                   setShowReset((previous) => !previous);
+                  setShowSignin(true);
                   setShowSignup(false);
                 }}>
                   <Mail className="h-4 w-4" />
@@ -215,7 +226,10 @@ export function LoginView({
                 <UserPlus className="h-4 w-4" />
                 Sign up
               </Button>
-              <Button type="button" variant="ghost" className="w-full rounded-full" onClick={() => setShowSignup(false)}>
+              <Button type="button" variant="ghost" className="w-full rounded-full" onClick={() => {
+                setShowSignup(false);
+                setShowSignin(true);
+              }}>
                 Already have an account? Sign in
               </Button>
             </CardFooter>
