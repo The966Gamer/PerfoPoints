@@ -23,6 +23,48 @@ const INITIAL_STATE: FamilyAppState = {
 };
 
 const ACCOUNT_DELETED_MESSAGE = "This account was deleted from Perfo Points. Ask a parent admin to create it again if you want back in.";
+const PENDING_SIGNUP_STORAGE_KEY = "perfo-pending-signup";
+
+type PendingSignupDraft = {
+  email: string;
+  username: string;
+  displayName: string;
+};
+
+function readPendingSignupDraft(): PendingSignupDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const rawDraft = window.localStorage.getItem(PENDING_SIGNUP_STORAGE_KEY);
+    if (!rawDraft) return null;
+    const draft = JSON.parse(rawDraft) as Partial<PendingSignupDraft>;
+    if (!draft.email || !draft.username || !draft.displayName) return null;
+    return {
+      email: draft.email,
+      username: draft.username,
+      displayName: draft.displayName,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function savePendingSignupDraft(draft: PendingSignupDraft) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PENDING_SIGNUP_STORAGE_KEY, JSON.stringify(draft));
+  } catch (error) {
+    console.error("Could not save the pending signup draft.", error);
+  }
+}
+
+function clearPendingSignupDraft() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(PENDING_SIGNUP_STORAGE_KEY);
+  } catch (error) {
+    console.error("Could not clear the pending signup draft.", error);
+  }
+}
 
 function mapProfile(
   profile: any,
@@ -48,7 +90,7 @@ export function SupabasePerfoPointsApp() {
   const [loading, setLoading] = useState(true);
   const [loadScreenTimedOut, setLoadScreenTimedOut] = useState(false);
   const [backendMessage, setBackendMessage] = useState<string | null>(null);
-  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState(() => readPendingSignupDraft()?.email ?? "");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [adminPassword, setAdminPassword] = useState("");
   const [loginForm, setLoginForm] = useState({ emailOrUsername: "", password: "" });
@@ -146,10 +188,18 @@ export function SupabasePerfoPointsApp() {
     username?: string,
     displayName?: string,
   ) => {
+    const pendingDraft = readPendingSignupDraft();
+    const draftMatchesUser = Boolean(
+      pendingDraft?.email &&
+      user.email &&
+      pendingDraft.email.trim().toLowerCase() === user.email.trim().toLowerCase(),
+    );
     const metadataUsername = user.user_metadata?.username?.trim().toLowerCase();
     const metadataDisplayName = user.user_metadata?.fullName?.trim() || user.user_metadata?.full_name?.trim() || user.user_metadata?.displayName?.trim();
-    const resolvedUsername = username?.trim().toLowerCase() || metadataUsername || user.email?.split("@")[0]?.toLowerCase() || `user_${user.id.slice(0, 6)}`;
-    const resolvedDisplayName = displayName?.trim() || metadataDisplayName || resolvedUsername || "Family User";
+    const draftUsername = draftMatchesUser ? pendingDraft?.username?.trim().toLowerCase() : "";
+    const draftDisplayName = draftMatchesUser ? pendingDraft?.displayName?.trim() : "";
+    const resolvedUsername = username?.trim().toLowerCase() || metadataUsername || draftUsername || user.email?.split("@")[0]?.toLowerCase() || `user_${user.id.slice(0, 6)}`;
+    const resolvedDisplayName = displayName?.trim() || metadataDisplayName || draftDisplayName || resolvedUsername || "Family User";
     const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
     if (profileError) throw profileError;
     if (profile) {
@@ -160,8 +210,10 @@ export function SupabasePerfoPointsApp() {
       if (Object.keys(updates).length > 0) {
         const { data: updated, error } = await supabase.from("profiles").update(updates).eq("id", user.id).select().single();
         if (error) throw error;
+        if (draftMatchesUser) clearPendingSignupDraft();
         return updated;
       }
+      if (draftMatchesUser) clearPendingSignupDraft();
       return profile;
     }
 
@@ -178,6 +230,7 @@ export function SupabasePerfoPointsApp() {
 
     const { data: inserted, error } = await supabase.from("profiles").insert(payload).select().single();
     if (error) throw error;
+    if (draftMatchesUser) clearPendingSignupDraft();
     return inserted;
   };
 
@@ -359,6 +412,7 @@ export function SupabasePerfoPointsApp() {
         }
         if (session?.user) {
           await ensureProfile(session.user);
+          setPendingVerificationEmail("");
         }
       } catch (error: any) {
         console.error(error);
@@ -405,6 +459,7 @@ export function SupabasePerfoPointsApp() {
       if (data.user) await ensureProfile(data.user);
       setAdminPassword(loginForm.password);
       setLoginForm({ emailOrUsername: "", password: "" });
+      clearPendingSignupDraft();
       setPendingVerificationEmail("");
       await fetchAppData(data.user?.id ?? null);
       toast.success("Signed in.");
@@ -446,11 +501,17 @@ export function SupabasePerfoPointsApp() {
           await fetchAppData(data.user.id);
         }
         setSignupForm({ email: "", username: "", displayName: "", password: "" });
+        clearPendingSignupDraft();
         setPendingVerificationEmail("");
         toast.success("Account created and signed in.");
         return;
       }
 
+      savePendingSignupDraft({
+        email,
+        username,
+        displayName,
+      });
       setPendingVerificationEmail(email);
       toast.success(`Account created. Confirm ${email} from your email, then sign in.`);
     } catch (error: any) {
@@ -459,26 +520,38 @@ export function SupabasePerfoPointsApp() {
   };
 
   const handleResendVerification = async () => {
-    if (!pendingVerificationEmail.trim()) {
+    const emailToUse = pendingVerificationEmail.trim() || readPendingSignupDraft()?.email?.trim() || "";
+    if (!emailToUse) {
       toast.error("Enter your email again or create the account first.");
       return;
     }
     try {
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email: pendingVerificationEmail.trim(),
+        email: emailToUse,
         options: {
           emailRedirectTo: getAuthRedirectUrl(),
         },
       });
       if (error) throw error;
-      toast.success(`Confirmation email sent again to ${pendingVerificationEmail}.`);
+      setPendingVerificationEmail(emailToUse);
+      toast.success(`Confirmation email sent again to ${emailToUse}.`);
     } catch (error: any) {
       handleAppError(error, "Could not resend the confirmation email.");
     }
   };
 
   const handleEditPendingSignup = () => {
+    const pendingDraft = readPendingSignupDraft();
+    if (pendingDraft) {
+      setSignupForm((previous) => ({
+        ...previous,
+        email: pendingDraft.email,
+        username: pendingDraft.username,
+        displayName: pendingDraft.displayName,
+      }));
+    }
+    clearPendingSignupDraft();
     setPendingVerificationEmail("");
   };
 

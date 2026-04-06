@@ -207,6 +207,9 @@ export function LoginView({
                         <CardDescription className="mt-3 text-base">
                           We created your account. Open the email sent to {pendingVerificationEmail}, confirm it, then sign in here.
                         </CardDescription>
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          Your family profile will finish showing up after that confirmed sign-in, with the username and name you picked during signup.
+                        </p>
                         <div className="mt-5 flex flex-col gap-3">
                           <Button type="button" className="w-full rounded-full" onClick={onResendVerification}>
                             <Mail className="h-4 w-4" />
