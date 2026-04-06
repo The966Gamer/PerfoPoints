@@ -859,9 +859,9 @@ export function SupabasePerfoPointsApp() {
                 <Sparkles className="h-3.5 w-3.5" />
                 Perfo Points
               </div>
-              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Family rewards with live Supabase data.</h1>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">PERFO POINTS for chores, goals, and rewards.</h1>
               <p className="mt-2 max-w-3xl text-sm text-muted-foreground sm:text-base">
-                Responsive on phones, connected to your database, and ready for real logins, resets, photo proof, and multi-device use.
+                Built for families with task proof photos, approval flows, point tracking, reward redemptions, and a layout that works cleanly on phones.
               </p>
             </div>
             <div className="flex items-center gap-3">
