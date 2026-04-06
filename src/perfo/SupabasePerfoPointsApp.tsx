@@ -118,7 +118,16 @@ export function SupabasePerfoPointsApp() {
   };
 
   const reloadFreshApp = () => {
-    window.location.replace(`${window.location.origin}?refresh=${Date.now()}`);
+    try {
+      sessionStorage.clear();
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith("sb-") || key.startsWith("supabase"))
+        .forEach((key) => localStorage.removeItem(key));
+    } catch (error) {
+      console.error("Could not clear cached auth state.", error);
+    }
+
+    window.location.replace(`${window.location.origin}${window.location.pathname}`);
   };
 
   const ensureProfile = async (user: { id: string; email?: string }, username?: string, displayName?: string) => {
