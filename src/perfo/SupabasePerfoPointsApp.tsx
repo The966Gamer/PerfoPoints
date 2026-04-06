@@ -96,6 +96,8 @@ export function SupabasePerfoPointsApp() {
   const isDeletedAuthUser = (user?: { user_metadata?: { accountDeleted?: boolean } } | null) =>
     Boolean(user?.user_metadata?.accountDeleted);
 
+  const getAuthRedirectUrl = () => `${window.location.origin}${window.location.pathname}`;
+
   const getFriendlyErrorMessage = (error: any, fallback: string) => {
     const message = error?.message || fallback;
     if (message.includes("Could not find the table 'public.profiles'")) {
@@ -424,6 +426,7 @@ export function SupabasePerfoPointsApp() {
         email,
         password,
         options: {
+          emailRedirectTo: getAuthRedirectUrl(),
           data: {
             username,
             fullName: displayName,
@@ -464,6 +467,9 @@ export function SupabasePerfoPointsApp() {
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: pendingVerificationEmail.trim(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+        },
       });
       if (error) throw error;
       toast.success(`Confirmation email sent again to ${pendingVerificationEmail}.`);
@@ -483,7 +489,7 @@ export function SupabasePerfoPointsApp() {
     }
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-        redirectTo: `${window.location.origin}`,
+        redirectTo: getAuthRedirectUrl(),
       });
       if (error) throw error;
       toast.success("Password reset email sent.");
@@ -643,6 +649,7 @@ export function SupabasePerfoPointsApp() {
         email: userForm.email.trim(),
         password: userForm.password,
         options: {
+          emailRedirectTo: getAuthRedirectUrl(),
           data: {
             username: userForm.username.trim().toLowerCase(),
             fullName: userForm.displayName.trim(),
@@ -886,7 +893,7 @@ export function SupabasePerfoPointsApp() {
     if (!kid?.email) return toast.error("This user does not have an email on file.");
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(kid.email, {
-        redirectTo: `${window.location.origin}`,
+        redirectTo: getAuthRedirectUrl(),
       });
       if (error) throw error;
       toast.success(`Reset email sent to ${kid.email}.`);
@@ -1015,13 +1022,16 @@ export function SupabasePerfoPointsApp() {
         .eq("id", currentUser.id);
       if (profileError) throw profileError;
 
-      const { error: authError } = await supabase.auth.updateUser({
-        ...(emailChanged ? { email: trimmedEmail } : {}),
-        data: {
-          username: trimmedUsername,
-          fullName: trimmedDisplayName,
+      const { error: authError } = await supabase.auth.updateUser(
+        {
+          ...(emailChanged ? { email: trimmedEmail } : {}),
+          data: {
+            username: trimmedUsername,
+            fullName: trimmedDisplayName,
+          },
         },
-      });
+        emailChanged ? { emailRedirectTo: getAuthRedirectUrl() } : undefined,
+      );
       if (authError) throw authError;
 
       await fetchAppData(currentUser.id);
