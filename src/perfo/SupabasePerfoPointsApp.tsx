@@ -341,14 +341,12 @@ export function SupabasePerfoPointsApp() {
       setBackendMessage(null);
       let email = loginForm.emailOrUsername.trim();
       if (!email.includes("@")) {
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("email")
-          .eq("username", email.toLowerCase())
-          .maybeSingle();
+        const { data: resolvedEmail, error } = await supabase.rpc("find_profile_email_by_username", {
+          login_username: email.toLowerCase(),
+        });
         if (error) throw error;
-        if (!profile?.email) throw new Error("Username not found.");
-        email = profile.email;
+        if (!resolvedEmail) throw new Error("Username not found.");
+        email = resolvedEmail;
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: loginForm.password });
