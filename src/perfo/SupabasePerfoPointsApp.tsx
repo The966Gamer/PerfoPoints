@@ -44,6 +44,8 @@ function mapProfile(
 export function SupabasePerfoPointsApp() {
   const [appState, setAppState] = useState<FamilyAppState>(INITIAL_STATE);
   const [loading, setLoading] = useState(true);
+  const [backendMessage, setBackendMessage] = useState<string | null>(null);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [adminPassword, setAdminPassword] = useState("");
   const [loginForm, setLoginForm] = useState({ emailOrUsername: "", password: "" });
@@ -83,8 +85,36 @@ export function SupabasePerfoPointsApp() {
     ? Math.min(100, Math.round((currentUser.points / totalAvailablePoints) * 100))
     : 0;
 
+  const getFriendlyErrorMessage = (error: any, fallback: string) => {
+    const message = error?.message || fallback;
+    if (message.includes("Could not find the table 'public.profiles'")) {
+      return "Perfo Points is connected to Supabase, but the family tables are not set up yet. Run `supabase db push`, then refresh the app.";
+    }
+    if (message.toLowerCase().includes("email rate limit exceeded")) {
+      return "Too many email messages were requested too quickly. Wait a minute, then try again.";
+    }
+    if (message.toLowerCase().includes("email not confirmed")) {
+      return "Confirm your email first, then sign in.";
+    }
+    if (message.toLowerCase().includes("invalid login credentials")) {
+      return "That email or password did not match. Try again.";
+    }
+    return message;
+  };
+
+  const handleAppError = (error: any, fallback: string) => {
+    const friendlyMessage = getFriendlyErrorMessage(error, fallback);
+    if (friendlyMessage.includes("family tables are not set up yet")) {
+      setBackendMessage(friendlyMessage);
+      setAppState(INITIAL_STATE);
+    }
+    toast.error(friendlyMessage);
+    return friendlyMessage;
+  };
+
   const ensureProfile = async (user: { id: string; email?: string }, username?: string, displayName?: string) => {
-    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    if (profileError) throw profileError;
     if (profile) return profile;
 
     const payload = {
@@ -110,6 +140,7 @@ export function SupabasePerfoPointsApp() {
       const session = sessionResult.data.session;
       const userId = activeUserId ?? session?.user?.id ?? null;
       setSessionUserId(userId);
+      setBackendMessage(null);
 
       if (!userId) {
         setAppState(INITIAL_STATE);
@@ -253,7 +284,7 @@ export function SupabasePerfoPointsApp() {
       });
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Failed to load Supabase data.");
+      handleAppError(error, "Failed to load Supabase data.");
     } finally {
       setLoading(false);
     }
@@ -262,8 +293,13 @@ export function SupabasePerfoPointsApp() {
   useEffect(() => {
     fetchAppData();
     const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await ensureProfile(session.user);
+      try {
+        if (session?.user) {
+          await ensureProfile(session.user);
+        }
+      } catch (error: any) {
+        console.error(error);
+        handleAppError(error, "Could not load your family profile.");
       }
       fetchAppData(session?.user?.id ?? null);
     });
@@ -273,6 +309,7 @@ export function SupabasePerfoPointsApp() {
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
+      setBackendMessage(null);
       let email = loginForm.emailOrUsername.trim();
       if (!email.includes("@")) {
         const { data: profile, error } = await supabase
@@ -280,7 +317,8 @@ export function SupabasePerfoPointsApp() {
           .select("email")
           .eq("username", email.toLowerCase())
           .maybeSingle();
-        if (error || !profile?.email) throw new Error("Username not found.");
+        if (error) throw error;
+        if (!profile?.email) throw new Error("Username not found.");
         email = profile.email;
       }
 
@@ -289,16 +327,18 @@ export function SupabasePerfoPointsApp() {
       if (data.user) await ensureProfile(data.user);
       setAdminPassword(loginForm.password);
       setLoginForm({ emailOrUsername: "", password: "" });
+      setPendingVerificationEmail("");
       await fetchAppData(data.user?.id ?? null);
       toast.success("Signed in.");
     } catch (error: any) {
-      toast.error(error.message || "Login failed.");
+      handleAppError(error, "Login failed.");
     }
   };
 
   const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
+      setBackendMessage(null);
       const { data, error } = await supabase.auth.signUp({
         email: signupForm.email.trim(),
         password: signupForm.password,
@@ -310,14 +350,55 @@ export function SupabasePerfoPointsApp() {
         },
       });
       if (error) throw error;
-      if (data.user) {
+
+      const email = signupForm.email.trim();
+      const username = signupForm.username.trim().toLowerCase();
+      const displayName = signupForm.displayName.trim();
+      const hasSession = Boolean(data.session);
+
+      if (data.user && hasSession) {
         await ensureProfile(data.user, signupForm.username.trim().toLowerCase(), signupForm.displayName.trim());
       }
       setSignupForm({ email: "", username: "", displayName: "", password: "" });
-      toast.success("Account created. Check your email if confirmation is enabled.");
-      await fetchAppData(data.user?.id ?? null);
+
+      if (hasSession) {
+        if (data.user) {
+          setAdminPassword(signupForm.password);
+          await fetchAppData(data.user.id);
+        }
+        setPendingVerificationEmail("");
+        toast.success("Account created and signed in.");
+        return;
+      }
+
+      setPendingVerificationEmail(email);
+      toast.success(`Account created. Confirm ${email} from your email, then sign in.`);
+      if (data.user) {
+        try {
+          await ensureProfile(data.user, username, displayName);
+        } catch (error: any) {
+          console.error(error);
+        }
+      }
     } catch (error: any) {
-      toast.error(error.message || "Signup failed.");
+      handleAppError(error, "Signup failed.");
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!pendingVerificationEmail.trim()) {
+      toast.error("Enter your email again or create the account first.");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: pendingVerificationEmail.trim(),
+      });
+      if (error) throw error;
+      toast.success(`Confirmation email sent again to ${pendingVerificationEmail}.`);
+    } catch (error: any) {
+      handleAppError(error, "Could not resend the confirmation email.");
     }
   };
 
@@ -334,7 +415,7 @@ export function SupabasePerfoPointsApp() {
       toast.success("Password reset email sent.");
       setResetEmail("");
     } catch (error: any) {
-      toast.error(error.message || "Could not send reset email.");
+      handleAppError(error, "Could not send reset email.");
     }
   };
 
@@ -913,7 +994,7 @@ export function SupabasePerfoPointsApp() {
           </Card>
         ) : loading ? (
           <div className="rounded-3xl border border-white/60 bg-white/80 p-10 text-center shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-            Loading Supabase data...
+            Loading your Perfo Points data...
           </div>
         ) : !currentUser ? (
           <LoginView
@@ -926,7 +1007,10 @@ export function SupabasePerfoPointsApp() {
             onLogin={handleLogin}
             onSignup={handleSignup}
             onResetPassword={handleForgotPassword}
+            onResendVerification={handleResendVerification}
             themeSwitch={<ThemeSwitch />}
+            backendMessage={backendMessage}
+            pendingVerificationEmail={pendingVerificationEmail}
           />
         ) : currentUser.role === "admin" ? (
           <AdminView

@@ -10,10 +10,15 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+release
 .env
 .env.*
 !.env.example
 *.local
+android/.gradle
+android/local.properties
+android/app/build
+android/build
 
 # Editor directories and files
 .vscode/*

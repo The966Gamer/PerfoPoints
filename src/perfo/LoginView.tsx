@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { ArrowRight, ClipboardCheck, Gift, Lock, Mail, Shield, UserPlus, Wallet } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { AlertTriangle, ArrowRight, ClipboardCheck, Gift, Lock, Mail, Shield, UserPlus, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,10 @@ export function LoginView({
   onLogin,
   onSignup,
   onResetPassword,
+  onResendVerification,
   themeSwitch,
+  backendMessage,
+  pendingVerificationEmail,
 }: {
   loginForm: { emailOrUsername: string; password: string };
   setLoginForm: React.Dispatch<React.SetStateAction<{ emailOrUsername: string; password: string }>>;
@@ -26,12 +29,23 @@ export function LoginView({
   onLogin: (event: FormEvent<HTMLFormElement>) => void;
   onSignup: (event: FormEvent<HTMLFormElement>) => void;
   onResetPassword: () => void;
+  onResendVerification: () => void;
   themeSwitch: React.ReactNode;
+  backendMessage: string | null;
+  pendingVerificationEmail: string;
 }) {
   const [step, setStep] = useState<"intro" | "features" | "auth">("intro");
   const [showSignin, setShowSignin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showReset, setShowReset] = useState(false);
+
+  useEffect(() => {
+    if (!pendingVerificationEmail) return;
+    setStep("auth");
+    setShowSignin(false);
+    setShowSignup(false);
+    setShowReset(false);
+  }, [pendingVerificationEmail]);
 
   return (
     <div className="space-y-6">
@@ -44,6 +58,13 @@ export function LoginView({
               </div>
               <div className="shrink-0">{themeSwitch}</div>
             </div>
+
+            {backendMessage ? (
+              <div className="mt-6 flex items-start gap-3 rounded-3xl border border-amber-300/70 bg-amber-50/90 p-4 text-left text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>{backendMessage}</p>
+              </div>
+            ) : null}
 
             {step === "intro" ? (
               <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -169,6 +190,24 @@ export function LoginView({
                         Back to features
                       </Button>
                     </div>
+                    {pendingVerificationEmail ? (
+                      <div className="mt-8 w-full max-w-xl rounded-[2rem] border border-sky-300/70 bg-sky-50/90 p-6 text-center shadow-lg dark:border-sky-900/70 dark:bg-sky-950/45">
+                        <CardTitle className="text-2xl font-black uppercase tracking-[0.08em]">Confirm Your Email</CardTitle>
+                        <CardDescription className="mt-3 text-base">
+                          We created your account. Open the email sent to {pendingVerificationEmail}, confirm it, then sign in here.
+                        </CardDescription>
+                        <div className="mt-5 flex flex-col gap-3">
+                          <Button type="button" className="w-full rounded-full" onClick={onResendVerification}>
+                            <Mail className="h-4 w-4" />
+                            Resend confirmation email
+                          </Button>
+                          <Button type="button" variant="secondary" className="w-full rounded-full" onClick={() => setShowSignin(true)}>
+                            <Lock className="h-4 w-4" />
+                            I confirmed, let me sign in
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
 
