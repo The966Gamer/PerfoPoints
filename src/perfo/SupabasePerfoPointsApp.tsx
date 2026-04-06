@@ -117,6 +117,10 @@ export function SupabasePerfoPointsApp() {
     return friendlyMessage;
   };
 
+  const reloadFreshApp = () => {
+    window.location.replace(`${window.location.origin}?refresh=${Date.now()}`);
+  };
+
   const ensureProfile = async (user: { id: string; email?: string }, username?: string, displayName?: string) => {
     const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
     if (profileError) throw profileError;
@@ -451,7 +455,7 @@ export function SupabasePerfoPointsApp() {
     setBackendMessage(null);
     setSessionUserId(null);
     setAppState(INITIAL_STATE);
-    window.location.replace(window.location.origin);
+    reloadFreshApp();
   };
 
   const handleTaskSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -1095,6 +1099,7 @@ export function SupabasePerfoPointsApp() {
             onResetPassword={handleForgotPassword}
             onResendVerification={handleResendVerification}
             onEditPendingSignup={handleEditPendingSignup}
+            onReloadApp={reloadFreshApp}
             themeSwitch={<ThemeSwitch />}
             backendMessage={effectiveBackendMessage}
             pendingVerificationEmail={pendingVerificationEmail}

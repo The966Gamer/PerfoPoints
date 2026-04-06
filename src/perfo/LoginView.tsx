@@ -17,6 +17,7 @@ export function LoginView({
   onResetPassword,
   onResendVerification,
   onEditPendingSignup,
+  onReloadApp,
   themeSwitch,
   backendMessage,
   pendingVerificationEmail,
@@ -32,6 +33,7 @@ export function LoginView({
   onResetPassword: () => void;
   onResendVerification: () => void;
   onEditPendingSignup: () => void;
+  onReloadApp: () => void;
   themeSwitch: React.ReactNode;
   backendMessage: string | null;
   pendingVerificationEmail: string;
@@ -62,9 +64,16 @@ export function LoginView({
             </div>
 
             {backendMessage ? (
-              <div className="mt-6 flex items-start gap-3 rounded-3xl border border-amber-300/70 bg-amber-50/90 p-4 text-left text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>{backendMessage}</p>
+              <div className="mt-6 rounded-3xl border border-amber-300/70 bg-amber-50/90 p-4 text-left text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{backendMessage}</p>
+                </div>
+                <div className="mt-4">
+                  <Button type="button" variant="outline" className="rounded-full border-amber-400/70 bg-transparent text-amber-900 dark:text-amber-100" onClick={onReloadApp}>
+                    Reload this app fresh
+                  </Button>
+                </div>
               </div>
             ) : null}
 
