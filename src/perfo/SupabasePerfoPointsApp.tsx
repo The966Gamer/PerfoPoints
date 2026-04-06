@@ -22,6 +22,8 @@ const INITIAL_STATE: FamilyAppState = {
   dailyRedemptionLimit: 2,
 };
 
+const ACCOUNT_DELETED_MESSAGE = "This account was deleted from Perfo Points. Ask a parent admin to create it again if you want back in.";
+
 function mapProfile(
   profile: any,
   earnedHistory: FamilyUser["earnedHistory"],
@@ -69,6 +71,7 @@ export function SupabasePerfoPointsApp() {
 
   const currentUser = appState.users.find((user) => user.id === sessionUserId) ?? null;
   const kids = useMemo(() => appState.users.filter((user) => user.role === "user"), [appState.users]);
+  const adminCount = useMemo(() => appState.users.filter((user) => user.role === "admin").length, [appState.users]);
   const pendingRequests = useMemo(() => appState.pointRequests.filter((request) => request.status === "pending"), [appState.pointRequests]);
   const visibleTasks = currentUser?.role === "user"
     ? appState.tasks.filter((task) => {
@@ -90,6 +93,9 @@ export function SupabasePerfoPointsApp() {
     : null);
   const shouldShowAuthScreen = !currentUser && (!loading || loadScreenTimedOut || Boolean(effectiveBackendMessage) || Boolean(pendingVerificationEmail));
 
+  const isDeletedAuthUser = (user?: { user_metadata?: { accountDeleted?: boolean } } | null) =>
+    Boolean(user?.user_metadata?.accountDeleted);
+
   const getFriendlyErrorMessage = (error: any, fallback: string) => {
     const message = error?.message || fallback;
     if (message.includes("Could not find the table 'public.profiles'")) {
@@ -103,6 +109,9 @@ export function SupabasePerfoPointsApp() {
     }
     if (message.toLowerCase().includes("invalid login credentials")) {
       return "That email or password did not match. Try again.";
+    }
+    if (message.includes(ACCOUNT_DELETED_MESSAGE)) {
+      return ACCOUNT_DELETED_MESSAGE;
     }
     return message;
   };
@@ -175,6 +184,13 @@ export function SupabasePerfoPointsApp() {
     try {
       const sessionResult = await supabase.auth.getSession();
       const session = sessionResult.data.session;
+      if (isDeletedAuthUser(session?.user)) {
+        setSessionUserId(null);
+        setAppState(INITIAL_STATE);
+        setBackendMessage(ACCOUNT_DELETED_MESSAGE);
+        await supabase.auth.signOut();
+        return;
+      }
       const userId = activeUserId ?? session?.user?.id ?? null;
       setSessionUserId(userId);
       setBackendMessage(null);
@@ -331,6 +347,14 @@ export function SupabasePerfoPointsApp() {
     fetchAppData();
     const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
+        if (isDeletedAuthUser(session?.user)) {
+          setBackendMessage(ACCOUNT_DELETED_MESSAGE);
+          setSessionUserId(null);
+          setAppState(INITIAL_STATE);
+          setLoading(false);
+          await supabase.auth.signOut();
+          return;
+        }
         if (session?.user) {
           await ensureProfile(session.user);
         }
@@ -372,6 +396,10 @@ export function SupabasePerfoPointsApp() {
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: loginForm.password });
       if (error) throw error;
+      if (isDeletedAuthUser(data.user)) {
+        await supabase.auth.signOut();
+        throw new Error(ACCOUNT_DELETED_MESSAGE);
+      }
       if (data.user) await ensureProfile(data.user);
       setAdminPassword(loginForm.password);
       setLoginForm({ emailOrUsername: "", password: "" });
@@ -473,6 +501,56 @@ export function SupabasePerfoPointsApp() {
     setSessionUserId(null);
     setAppState(INITIAL_STATE);
     reloadFreshApp();
+  };
+
+  const handleDeleteOwnAccount = async () => {
+    if (!currentUser) return;
+    if (currentUser.role === "admin" && adminCount <= 1) {
+      toast.error("Promote another admin before deleting the only admin account.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete this Perfo Points account? This removes your profile, points, requests, keys, and history from the family app.",
+    );
+    if (!confirmed) return;
+
+    let previousMetadata: Record<string, any> | undefined;
+    let markedDeleted = false;
+
+    try {
+      const authResult = await supabase.auth.getUser();
+      previousMetadata = authResult.data.user?.user_metadata ?? {};
+
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          ...previousMetadata,
+          username: currentUser.username,
+          fullName: currentUser.displayName,
+          accountDeleted: true,
+          deletedAt: new Date().toISOString(),
+        },
+      });
+      if (metadataError) throw metadataError;
+      markedDeleted = true;
+
+      const { error: deleteError } = await supabase.from("profiles").delete().eq("id", currentUser.id);
+      if (deleteError) throw deleteError;
+
+      toast.success("Your Perfo Points account was deleted.");
+      await supabase.auth.signOut();
+      setAdminPassword("");
+      setPendingVerificationEmail("");
+      setSessionUserId(null);
+      setAppState(INITIAL_STATE);
+      setBackendMessage(ACCOUNT_DELETED_MESSAGE);
+      reloadFreshApp();
+    } catch (error: any) {
+      if (markedDeleted && previousMetadata) {
+        await supabase.auth.updateUser({ data: previousMetadata });
+      }
+      toast.error(getFriendlyErrorMessage(error, "Could not delete your account."));
+    }
   };
 
   const handleTaskSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -1178,6 +1256,7 @@ export function SupabasePerfoPointsApp() {
             onUpdateSalahToday={handleUpdateSalahToday}
             onSaveOwnSettings={handleSaveOwnSettings}
             onChangeOwnPassword={handleChangeOwnPassword}
+            onDeleteOwnAccount={handleDeleteOwnAccount}
           />
         )}
       </div>

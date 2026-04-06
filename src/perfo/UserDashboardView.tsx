@@ -27,6 +27,7 @@ export function UserDashboardView({
   onUpdateSalahToday,
   onSaveOwnSettings,
   onChangeOwnPassword,
+  onDeleteOwnAccount,
 }: {
   appState: FamilyAppState;
   currentUser: FamilyUser;
@@ -43,6 +44,7 @@ export function UserDashboardView({
   onUpdateSalahToday: (completedCount: number) => void;
   onSaveOwnSettings: (values: { username: string; displayName: string; email: string }) => void;
   onChangeOwnPassword: (values: { password: string; confirmPassword: string }) => void;
+  onDeleteOwnAccount: () => void;
 }) {
   const [settingsForm, setSettingsForm] = useState({
     username: currentUser.username,
@@ -371,6 +373,24 @@ export function UserDashboardView({
             </form>
           </Card>
         </div>
+
+        <Card className="border-red-300/70 bg-red-50/90 shadow-xl backdrop-blur dark:border-red-900/70 dark:bg-red-950/30">
+          <CardHeader>
+            <SectionHeader
+              icon={<UserRound className="h-5 w-5" />}
+              title="Delete account"
+              description="Permanently remove this Perfo Points profile, along with your points, requests, and history from the family app."
+            />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This signs you out right away. If you ever want back in later, a parent or admin will need to create your family profile again.
+            </p>
+            <Button type="button" variant="destructive" className="w-full rounded-full" onClick={onDeleteOwnAccount}>
+              Delete my account
+            </Button>
+          </CardContent>
+        </Card>
       </TabsContent>
     </Tabs>
   );
