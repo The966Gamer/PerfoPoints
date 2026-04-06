@@ -315,6 +315,38 @@ export type Database = {
         }
         Relationships: []
       }
+      salah_logs: {
+        Row: {
+          completed_count: number
+          id: string
+          log_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_count?: number
+          id?: string
+          log_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_count?: number
+          id?: string
+          log_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salah_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_key_rewards: {
         Row: {
           id: string
@@ -412,6 +444,35 @@ export type Database = {
             foreignKeyName: "user_keys_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_salah_settings: {
+        Row: {
+          daily_goal: number
+          enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          daily_goal?: number
+          enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          daily_goal?: number
+          enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_salah_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },

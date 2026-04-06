@@ -14,19 +14,17 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Purple theme */
-    --primary: 260 70% 50%;
+    --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
 
-    /* Accent orange for highlights */
-    --secondary: 32 95% 60%;
+    --secondary: 28 96% 56%;
     --secondary-foreground: 0 0% 20%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 260 70% 96%;
-    --accent-foreground: 260 70% 25%;
+    --accent: 199 88% 94%;
+    --accent-foreground: 201 96% 24%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -36,7 +34,7 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 260 70% 50%;
+    --ring: 199 89% 48%;
     --radius: 1rem;
   }
 
@@ -50,19 +48,17 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    /* Purple theme in dark mode */
-    --primary: 260 70% 60%;
+    --primary: 196 93% 60%;
     --primary-foreground: 0 0% 100%;
 
-    /* Accent orange for highlights in dark mode */
-    --secondary: 32 95% 55%;
+    --secondary: 29 95% 59%;
     --secondary-foreground: 0 0% 20%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 260 70% 20%;
-    --accent-foreground: 260 70% 90%;
+    --accent: 201 90% 18%;
+    --accent-foreground: 197 100% 88%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
@@ -72,7 +68,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 260 70% 60%;
+    --ring: 196 93% 60%;
   }
 }
 
@@ -84,6 +80,7 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    margin: 0;
   }
 }
 
