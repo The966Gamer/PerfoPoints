@@ -77,15 +77,9 @@ export function LoginView({
           <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
             <CardHeader>
               <CardTitle>Start here</CardTitle>
-              <CardDescription>Choose how you want to enter Perfo Points.</CardDescription>
+              <CardDescription>See the features, then choose sign in or sign up.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-2 rounded-2xl border border-white/60 bg-white/70 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-slate-950/40">
-                <p>Includes:</p>
-                <p>Task approvals and point requests</p>
-                <p>Proof photos and reward saving</p>
-                <p>Parent controls and family activity history</p>
-              </div>
               <Button
                 type="button"
                 className="h-14 w-full rounded-full text-base font-bold uppercase tracking-[0.1em]"
@@ -113,32 +107,34 @@ export function LoginView({
           </Card>
         ) : null}
 
-        <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-          <CardHeader>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>Use your email or username and your password to open the family dashboard.</CardDescription>
-          </CardHeader>
-          <form onSubmit={onLogin}>
-            <CardContent className="space-y-4">
-              <Input value={loginForm.emailOrUsername} onChange={(event) => setLoginForm((previous) => ({ ...previous, emailOrUsername: event.target.value }))} placeholder="Email or username" />
-              <Input type="password" value={loginForm.password} onChange={(event) => setLoginForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-              <Button type="submit" className="w-full rounded-full">
-                <Lock className="h-4 w-4" />
-                Enter dashboard
-              </Button>
-              <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => {
-                setShowReset((previous) => !previous);
-                setShowSignup(false);
-                setShowActions(true);
-              }}>
-                <Mail className="h-4 w-4" />
-                {showReset ? "Close reset" : "Reset password"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+        {showActions ? (
+          <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
+            <CardHeader>
+              <CardTitle>Sign in</CardTitle>
+              <CardDescription>Use your email or username and your password to open the family dashboard.</CardDescription>
+            </CardHeader>
+            <form onSubmit={onLogin}>
+              <CardContent className="space-y-4">
+                <Input value={loginForm.emailOrUsername} onChange={(event) => setLoginForm((previous) => ({ ...previous, emailOrUsername: event.target.value }))} placeholder="Email or username" />
+                <Input type="password" value={loginForm.password} onChange={(event) => setLoginForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3">
+                <Button type="submit" className="w-full rounded-full">
+                  <Lock className="h-4 w-4" />
+                  Enter dashboard
+                </Button>
+                <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => {
+                  setShowReset((previous) => !previous);
+                  setShowSignup(false);
+                  setShowActions(true);
+                }}>
+                  <Mail className="h-4 w-4" />
+                  {showReset ? "Close reset" : "Reset password"}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        ) : null}
 
         {showSignup ? (
           <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">

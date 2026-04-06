@@ -106,8 +106,17 @@ export function SupabasePerfoPointsApp() {
   const fetchAppData = async (activeUserId?: string | null) => {
     setLoading(true);
     try {
+      const sessionResult = await supabase.auth.getSession();
+      const session = sessionResult.data.session;
+      const userId = activeUserId ?? session?.user?.id ?? null;
+      setSessionUserId(userId);
+
+      if (!userId) {
+        setAppState(INITIAL_STATE);
+        return;
+      }
+
       const [
-        sessionResult,
         profilesResult,
         tasksResult,
         rewardsResult,
@@ -119,7 +128,6 @@ export function SupabasePerfoPointsApp() {
         salahSettingsResult,
         salahLogsResult,
       ] = await Promise.all([
-        supabase.auth.getSession(),
         supabase.from("profiles").select("*").order("username"),
         supabase.from("tasks").select("*").order("created_at", { ascending: false }),
         supabase.from("rewards").select("*").order("title"),
@@ -131,10 +139,6 @@ export function SupabasePerfoPointsApp() {
         supabase.from("user_salah_settings").select("*"),
         supabase.from("salah_logs").select("*").eq("log_date", new Date().toISOString().slice(0, 10)),
       ]);
-
-      const session = sessionResult.data.session;
-      const userId = activeUserId ?? session?.user?.id ?? null;
-      setSessionUserId(userId);
 
       if (profilesResult.error) throw profilesResult.error;
       if (tasksResult.error) throw tasksResult.error;
