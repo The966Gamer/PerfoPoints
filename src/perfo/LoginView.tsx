@@ -1,4 +1,4 @@
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { ClipboardCheck, Gift, Lock, Mail, Shield, UserPlus, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,14 +26,28 @@ export function LoginView({
   onSignup: (event: FormEvent<HTMLFormElement>) => void;
   onResetPassword: () => void;
 }) {
+  const [showSignup, setShowSignup] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
       <Card className="overflow-hidden border-white/60 bg-white/80 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-        <CardHeader>
-          <CardTitle className="text-3xl">Supabase-backed family rewards, built for desktop and phone.</CardTitle>
-          <CardDescription>
-            Parents manage tasks, kids submit proof photos, rewards use real point balances, and password recovery works through email.
-          </CardDescription>
+        <CardHeader className="space-y-5">
+          <div className="inline-flex w-fit rounded-full bg-slate-900 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-white dark:bg-white dark:text-slate-900">
+            PERFO POINTS
+          </div>
+          <div>
+            <CardTitle className="text-5xl font-black uppercase tracking-[0.08em] sm:text-6xl">PERFO POINTS</CardTitle>
+            <CardDescription className="mt-3 max-w-2xl text-base leading-7">
+              Chores, points, rewards, proof photos, parent approvals, and family progress in one place that feels fun instead of messy.
+            </CardDescription>
+            <div className="mt-5 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              <p>Task approvals with proof photos</p>
+              <p>Reward points and parent-controlled keys</p>
+              <p>Kid balances and progress history</p>
+              <p>Admin tools, reset emails, and family tracking</p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <FeatureCard icon={<ClipboardCheck className="mb-3 h-8 w-8" />} title="Task approvals" body="Completed chores can include a proof photo before an admin approves the points." className="from-sky-500 to-cyan-400" />
@@ -47,58 +61,88 @@ export function LoginView({
         <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
           <CardHeader>
             <CardTitle>Sign in</CardTitle>
-            <CardDescription>Use your email or username and your password.</CardDescription>
+            <CardDescription>Use your email or username and your password to open the family dashboard.</CardDescription>
           </CardHeader>
           <form onSubmit={onLogin}>
             <CardContent className="space-y-4">
               <Input value={loginForm.emailOrUsername} onChange={(event) => setLoginForm((previous) => ({ ...previous, emailOrUsername: event.target.value }))} placeholder="Email or username" />
               <Input type="password" value={loginForm.password} onChange={(event) => setLoginForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-3">
               <Button type="submit" className="w-full rounded-full">
                 <Lock className="h-4 w-4" />
                 Enter dashboard
               </Button>
-            </CardFooter>
-          </form>
-        </Card>
-
-        <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-          <CardHeader>
-            <CardTitle>Create account</CardTitle>
-            <CardDescription>New family members can sign up here. Admin role must still exist in Supabase profiles.</CardDescription>
-          </CardHeader>
-          <form onSubmit={onSignup}>
-            <CardContent className="space-y-4">
-              <Input type="email" value={signupForm.email} onChange={(event) => setSignupForm((previous) => ({ ...previous, email: event.target.value }))} placeholder="Email" />
-              <Input value={signupForm.username} onChange={(event) => setSignupForm((previous) => ({ ...previous, username: event.target.value }))} placeholder="Username" />
-              <Input value={signupForm.displayName} onChange={(event) => setSignupForm((previous) => ({ ...previous, displayName: event.target.value }))} placeholder="Display name" />
-              <Input type="password" value={signupForm.password} onChange={(event) => setSignupForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full rounded-full">
+              <Button type="button" variant="secondary" className="w-full rounded-full text-base font-semibold" onClick={() => {
+                setShowSignup((previous) => !previous);
+                setShowReset(false);
+              }}>
                 <UserPlus className="h-4 w-4" />
-                Sign up
+                {showSignup ? "Close sign up" : "Big sign up"}
+              </Button>
+              <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => {
+                setShowReset((previous) => !previous);
+                setShowSignup(false);
+              }}>
+                <Mail className="h-4 w-4" />
+                {showReset ? "Close reset" : "Reset password"}
               </Button>
             </CardFooter>
           </form>
         </Card>
 
-        <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-          <CardHeader>
-            <CardTitle>Reset password</CardTitle>
-            <CardDescription>Send yourself a reset email.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input type="email" value={resetEmail} onChange={(event) => setResetEmail(event.target.value)} placeholder="Email for reset link" />
-          </CardContent>
-          <CardFooter>
-            <Button onClick={onResetPassword} className="w-full rounded-full">
-              <Mail className="h-4 w-4" />
-              Send reset link
-            </Button>
-          </CardFooter>
-        </Card>
+        {showSignup ? (
+          <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
+            <CardHeader>
+              <CardTitle>Create account</CardTitle>
+              <CardDescription>Make a new Perfo Points account for your family and start tracking chores, rewards, proof photos, and progress.</CardDescription>
+            </CardHeader>
+            <form onSubmit={onSignup}>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2 rounded-2xl border border-white/60 bg-white/70 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-slate-950/40">
+                  <p>Includes:</p>
+                  <p>Task approvals and reward saving</p>
+                  <p>Photo proof uploads for completed chores</p>
+                  <p>Parent controls, resets, and family history</p>
+                </div>
+                <Input type="email" value={signupForm.email} onChange={(event) => setSignupForm((previous) => ({ ...previous, email: event.target.value }))} placeholder="Email" />
+                <Input value={signupForm.username} onChange={(event) => setSignupForm((previous) => ({ ...previous, username: event.target.value }))} placeholder="Username" />
+                <Input value={signupForm.displayName} onChange={(event) => setSignupForm((previous) => ({ ...previous, displayName: event.target.value }))} placeholder="Display name" />
+                <Input type="password" value={signupForm.password} onChange={(event) => setSignupForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3">
+                <Button type="submit" className="w-full rounded-full">
+                  <UserPlus className="h-4 w-4" />
+                  Sign up
+                </Button>
+                <Button type="button" variant="ghost" className="w-full rounded-full" onClick={() => setShowSignup(false)}>
+                  Already have an account? Sign in
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        ) : null}
+
+        {showReset ? (
+          <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
+            <CardHeader>
+              <CardTitle>Reset password</CardTitle>
+              <CardDescription>Send yourself a reset email.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input type="email" value={resetEmail} onChange={(event) => setResetEmail(event.target.value)} placeholder="Email for reset link" />
+            </CardContent>
+            <CardFooter className="flex gap-3">
+              <Button onClick={onResetPassword} className="flex-1 rounded-full">
+                <Mail className="h-4 w-4" />
+                Send reset link
+              </Button>
+              <Button type="button" variant="outline" className="rounded-full" onClick={() => setShowReset(false)}>
+                Close
+              </Button>
+            </CardFooter>
+          </Card>
+        ) : null}
       </div>
     </div>
   );
