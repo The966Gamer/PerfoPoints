@@ -130,14 +130,22 @@ export function SupabasePerfoPointsApp() {
     window.location.replace(`${window.location.origin}${window.location.pathname}`);
   };
 
-  const ensureProfile = async (user: { id: string; email?: string }, username?: string, displayName?: string) => {
+  const ensureProfile = async (
+    user: { id: string; email?: string; user_metadata?: { username?: string; fullName?: string; full_name?: string; displayName?: string } },
+    username?: string,
+    displayName?: string,
+  ) => {
+    const metadataUsername = user.user_metadata?.username?.trim().toLowerCase();
+    const metadataDisplayName = user.user_metadata?.fullName?.trim() || user.user_metadata?.full_name?.trim() || user.user_metadata?.displayName?.trim();
+    const resolvedUsername = username?.trim().toLowerCase() || metadataUsername || user.email?.split("@")[0]?.toLowerCase() || `user_${user.id.slice(0, 6)}`;
+    const resolvedDisplayName = displayName?.trim() || metadataDisplayName || resolvedUsername || "Family User";
     const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
     if (profileError) throw profileError;
     if (profile) {
       const updates: Record<string, string> = {};
       if (user.email && profile.email !== user.email) updates.email = user.email;
-      if (username && profile.username !== username) updates.username = username;
-      if (displayName && profile.full_name !== displayName) updates.full_name = displayName;
+      if (resolvedUsername && profile.username !== resolvedUsername) updates.username = resolvedUsername;
+      if (resolvedDisplayName && profile.full_name !== resolvedDisplayName) updates.full_name = resolvedDisplayName;
       if (Object.keys(updates).length > 0) {
         const { data: updated, error } = await supabase.from("profiles").update(updates).eq("id", user.id).select().single();
         if (error) throw error;
@@ -149,12 +157,12 @@ export function SupabasePerfoPointsApp() {
     const payload = {
       id: user.id,
       email: user.email || "",
-      username: username || user.email?.split("@")[0] || `user_${user.id.slice(0, 6)}`,
-      full_name: displayName || username || user.email?.split("@")[0] || "Family User",
+      username: resolvedUsername,
+      full_name: resolvedDisplayName,
       role: "user",
       points: 0,
       email_verified: false,
-      avatar_url: (displayName || username || "P").slice(0, 1).toUpperCase(),
+      avatar_url: resolvedDisplayName.slice(0, 1).toUpperCase(),
     };
 
     const { data: inserted, error } = await supabase.from("profiles").insert(payload).select().single();

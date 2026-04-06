@@ -4,6 +4,7 @@ import { Activity, ClipboardCheck, Gift, Medal, Settings, Star, Trophy, UserRoun
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionHeader, StatCard } from "@/perfo/PerfoBits";
@@ -300,11 +301,39 @@ export function UserDashboardView({
             </CardHeader>
             <form onSubmit={handleSaveSettings}>
               <CardContent className="space-y-4">
-                <Input value={settingsForm.username} onChange={(event) => setSettingsForm((previous) => ({ ...previous, username: event.target.value }))} placeholder="Username" />
-                <Input value={settingsForm.displayName} onChange={(event) => setSettingsForm((previous) => ({ ...previous, displayName: event.target.value }))} placeholder="Display name" />
-                <Input type="email" value={settingsForm.email} onChange={(event) => setSettingsForm((previous) => ({ ...previous, email: event.target.value }))} placeholder="Email" />
+                <div className="space-y-2">
+                  <Label htmlFor="settings-username">Change username</Label>
+                  <p className="text-sm text-muted-foreground">This is the short name your family sees with an @ sign on the leaderboard.</p>
+                  <Input
+                    id="settings-username"
+                    value={settingsForm.username}
+                    onChange={(event) => setSettingsForm((previous) => ({ ...previous, username: event.target.value }))}
+                    placeholder="Choose your username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="settings-display-name">Change display name</Label>
+                  <p className="text-sm text-muted-foreground">This is the full name shown around the app and in family activity.</p>
+                  <Input
+                    id="settings-display-name"
+                    value={settingsForm.displayName}
+                    onChange={(event) => setSettingsForm((previous) => ({ ...previous, displayName: event.target.value }))}
+                    placeholder="Choose your display name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="settings-email">Change email address</Label>
+                  <p className="text-sm text-muted-foreground">This email is used for sign in, password resets, and confirmation links.</p>
+                  <Input
+                    id="settings-email"
+                    type="email"
+                    value={settingsForm.email}
+                    onChange={(event) => setSettingsForm((previous) => ({ ...previous, email: event.target.value }))}
+                    placeholder="Enter your email address"
+                  />
+                </div>
                 <p className="text-sm text-muted-foreground">If you change your email, Perfo Points will ask you to confirm the new one first.</p>
-                <Button type="submit" className="w-full rounded-full">Save settings</Button>
+                <Button type="submit" className="w-full rounded-full">Save profile changes</Button>
               </CardContent>
             </form>
           </Card>
@@ -315,9 +344,29 @@ export function UserDashboardView({
             </CardHeader>
             <form onSubmit={handleSavePassword}>
               <CardContent className="space-y-4">
-                <Input type="password" value={passwordForm.password} onChange={(event) => setPasswordForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="New password" />
-                <Input type="password" value={passwordForm.confirmPassword} onChange={(event) => setPasswordForm((previous) => ({ ...previous, confirmPassword: event.target.value }))} placeholder="Confirm new password" />
-                <Button type="submit" className="w-full rounded-full">Update password</Button>
+                <div className="space-y-2">
+                  <Label htmlFor="settings-password">New password</Label>
+                  <p className="text-sm text-muted-foreground">Pick a new password for signing in on phones, tablets, and desktop.</p>
+                  <Input
+                    id="settings-password"
+                    type="password"
+                    value={passwordForm.password}
+                    onChange={(event) => setPasswordForm((previous) => ({ ...previous, password: event.target.value }))}
+                    placeholder="Enter a new password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="settings-password-confirm">Confirm new password</Label>
+                  <p className="text-sm text-muted-foreground">Type the same new password again so Perfo Points knows it was entered correctly.</p>
+                  <Input
+                    id="settings-password-confirm"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) => setPasswordForm((previous) => ({ ...previous, confirmPassword: event.target.value }))}
+                    placeholder="Re-enter your new password"
+                  />
+                </div>
+                <Button type="submit" className="w-full rounded-full">Save new password</Button>
               </CardContent>
             </form>
           </Card>
