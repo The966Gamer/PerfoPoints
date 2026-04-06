@@ -26,38 +26,89 @@ export function LoginView({
   onSignup: (event: FormEvent<HTMLFormElement>) => void;
   onResetPassword: () => void;
 }) {
+  const [showActions, setShowActions] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showReset, setShowReset] = useState(false);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+    <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
       <Card className="overflow-hidden border-white/60 bg-white/80 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-        <CardHeader className="space-y-5">
-          <div className="inline-flex w-fit rounded-full bg-slate-900 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-white dark:bg-white dark:text-slate-900">
-            PERFO POINTS
-          </div>
-          <div>
-            <CardTitle className="text-5xl font-black uppercase tracking-[0.08em] sm:text-6xl">PERFO POINTS</CardTitle>
-            <CardDescription className="mt-3 max-w-2xl text-base leading-7">
-              Chores, points, rewards, proof photos, parent approvals, and family progress in one place that feels fun instead of messy.
+        <CardContent className="grid min-h-[620px] gap-8 p-6 lg:grid-cols-[1fr_320px] lg:p-10">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="inline-flex rounded-full bg-slate-900 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-white dark:bg-white dark:text-slate-900">
+              Family Rewards
+            </div>
+            <CardTitle className="mt-6 text-6xl font-black uppercase tracking-[0.14em] sm:text-7xl lg:text-8xl">PERFO POINTS</CardTitle>
+            <CardDescription className="mt-5 max-w-2xl text-base leading-7 sm:text-lg">
+              Make chores feel like progress with proof photos, point rewards, parent approvals, and savings goals that kids can actually follow.
             </CardDescription>
-            <div className="mt-5 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-              <p>Task approvals with proof photos</p>
-              <p>Reward points and parent-controlled keys</p>
-              <p>Kid balances and progress history</p>
-              <p>Admin tools, reset emails, and family tracking</p>
+            <div className="mt-8 flex w-full max-w-md flex-col gap-3">
+              <Button
+                type="button"
+                size="lg"
+                className="h-14 rounded-full text-base font-bold uppercase tracking-[0.18em]"
+                onClick={() => {
+                  setShowActions(true);
+                  setShowSignup(false);
+                  setShowReset(false);
+                }}
+              >
+                GET STARTED
+              </Button>
+              <p className="text-sm text-muted-foreground">See the features, then jump into sign up or sign in.</p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <FeatureCard icon={<ClipboardCheck className="mb-3 h-8 w-8" />} title="Task approvals" body="Completed chores can include a proof photo before an admin approves the points." className="from-sky-500 to-cyan-400" />
-          <FeatureCard icon={<Gift className="mb-3 h-8 w-8" />} title="Reward redemptions" body="Rewards deduct points from the real Supabase profile balance and keep history." className="from-orange-500 to-amber-400" />
-          <FeatureCard icon={<Wallet className="mb-3 h-8 w-8" />} title="Shared family data" body="Tasks, rewards, requests, and balances persist across devices instead of local-only storage." className="from-emerald-500 to-lime-400" />
-          <FeatureCard icon={<Shield className="mb-3 h-8 w-8" />} title="Recovery and roles" body="Email-based login, password reset links, and admin tools all run through Supabase." className="from-fuchsia-500 to-pink-400" />
+
+          <div className="space-y-4">
+            <FeatureCard icon={<ClipboardCheck className="mb-3 h-8 w-8" />} title="Task approvals" body="Completed chores can include a proof photo before an admin approves the points." className="from-sky-500 to-cyan-400" />
+            <FeatureCard icon={<Gift className="mb-3 h-8 w-8" />} title="Reward redemptions" body="Kids save points for rewards while parents stay in control of the final approval." className="from-orange-500 to-amber-400" />
+            <FeatureCard icon={<Wallet className="mb-3 h-8 w-8" />} title="Balances and history" body="Track points earned, points spent, streaks, and family progress across devices." className="from-emerald-500 to-lime-400" />
+            <FeatureCard icon={<Shield className="mb-3 h-8 w-8" />} title="Parent tools" body="Admins can add users, reset passwords, approve tasks, and manage the whole family dashboard." className="from-fuchsia-500 to-pink-400" />
+          </div>
         </CardContent>
       </Card>
 
       <div className="space-y-6">
+        {showActions ? (
+          <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
+            <CardHeader>
+              <CardTitle>Start here</CardTitle>
+              <CardDescription>Choose how you want to enter Perfo Points.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2 rounded-2xl border border-white/60 bg-white/70 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-slate-950/40">
+                <p>Includes:</p>
+                <p>Task approvals and point requests</p>
+                <p>Proof photos and reward saving</p>
+                <p>Parent controls and family activity history</p>
+              </div>
+              <Button
+                type="button"
+                className="h-14 w-full rounded-full text-base font-bold uppercase tracking-[0.1em]"
+                onClick={() => {
+                  setShowSignup(true);
+                  setShowReset(false);
+                }}
+              >
+                <UserPlus className="h-4 w-4" />
+                Sign up
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-12 w-full rounded-full text-base font-semibold"
+                onClick={() => {
+                  setShowSignup(false);
+                  setShowReset(false);
+                }}
+              >
+                <Lock className="h-4 w-4" />
+                Sign in
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
           <CardHeader>
             <CardTitle>Sign in</CardTitle>
@@ -73,16 +124,10 @@ export function LoginView({
                 <Lock className="h-4 w-4" />
                 Enter dashboard
               </Button>
-              <Button type="button" variant="secondary" className="w-full rounded-full text-base font-semibold" onClick={() => {
-                setShowSignup((previous) => !previous);
-                setShowReset(false);
-              }}>
-                <UserPlus className="h-4 w-4" />
-                {showSignup ? "Close sign up" : "Big sign up"}
-              </Button>
               <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => {
                 setShowReset((previous) => !previous);
                 setShowSignup(false);
+                setShowActions(true);
               }}>
                 <Mail className="h-4 w-4" />
                 {showReset ? "Close reset" : "Reset password"}
