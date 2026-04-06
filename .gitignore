@@ -19,6 +19,7 @@ android/.gradle
 android/local.properties
 android/app/build
 android/build
+supabase/.temp
 
 # Editor directories and files
 .vscode/*
