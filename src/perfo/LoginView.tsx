@@ -15,6 +15,7 @@ export function LoginView({
   onLogin,
   onSignup,
   onResetPassword,
+  themeSwitch,
 }: {
   loginForm: { emailOrUsername: string; password: string };
   setLoginForm: React.Dispatch<React.SetStateAction<{ emailOrUsername: string; password: string }>>;
@@ -25,6 +26,7 @@ export function LoginView({
   onLogin: (event: FormEvent<HTMLFormElement>) => void;
   onSignup: (event: FormEvent<HTMLFormElement>) => void;
   onResetPassword: () => void;
+  themeSwitch: React.ReactNode;
 }) {
   const [showActions, setShowActions] = useState(false);
   const [showSignin, setShowSignin] = useState(false);
@@ -35,29 +37,34 @@ export function LoginView({
     <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
       <Card className="overflow-hidden border-white/60 bg-white/80 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
         <CardContent className="grid min-h-[620px] gap-8 p-6 lg:grid-cols-[1fr_320px] lg:p-10">
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="inline-flex rounded-full bg-slate-900 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-white dark:bg-white dark:text-slate-900">
-              Family Rewards
+          <div className="flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-4">
+              <div className="inline-flex rounded-full bg-slate-900 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-white dark:bg-white dark:text-slate-900">
+                Family Rewards
+              </div>
+              <div className="shrink-0">{themeSwitch}</div>
             </div>
-            <CardTitle className="mt-6 text-6xl font-black uppercase tracking-[0.14em] sm:text-7xl lg:text-8xl">PERFO POINTS</CardTitle>
-            <CardDescription className="mt-5 max-w-2xl text-base leading-7 sm:text-lg">
+            <div className="flex flex-1 flex-col justify-center text-left">
+              <CardTitle className="mt-8 max-w-4xl text-6xl font-black uppercase tracking-[0.14em] sm:text-7xl lg:text-[6.5rem]">PERFO POINTS</CardTitle>
+              <CardDescription className="mt-5 max-w-3xl text-base leading-7 sm:text-lg">
               Make chores feel like progress with proof photos, point rewards, parent approvals, and savings goals that kids can actually follow.
-            </CardDescription>
-            <div className="mt-8 flex w-full max-w-md flex-col gap-3">
-              <Button
-                type="button"
-                size="lg"
-                className="h-14 rounded-full text-base font-bold uppercase tracking-[0.18em]"
-                onClick={() => {
-                  setShowActions(true);
-                  setShowSignin(false);
-                  setShowSignup(false);
-                  setShowReset(false);
-                }}
-              >
-                GET STARTED
-              </Button>
-              <p className="text-sm text-muted-foreground">See the features, then jump into sign up or sign in.</p>
+              </CardDescription>
+              <div className="mt-8 flex w-full max-w-lg flex-col gap-3">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="h-14 rounded-full text-base font-bold uppercase tracking-[0.18em]"
+                  onClick={() => {
+                    setShowActions(true);
+                    setShowSignin(false);
+                    setShowSignup(false);
+                    setShowReset(false);
+                  }}
+                >
+                  GET STARTED
+                </Button>
+                <p className="text-sm text-muted-foreground">See the features, then jump into sign up or sign in.</p>
+              </div>
             </div>
           </div>
 

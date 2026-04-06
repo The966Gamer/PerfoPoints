@@ -856,9 +856,9 @@ export function SupabasePerfoPointsApp() {
   return (
     <div className="app-shell min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.22),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(251,146,60,0.18),_transparent_28%),linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(238,242,255,0.96))] text-foreground dark:bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.2),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(249,115,22,0.14),_transparent_28%),linear-gradient(180deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.98))]">
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <header className="mb-6 flex flex-col gap-5 rounded-[2rem] border border-white/60 bg-white/70 p-5 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/65 sm:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            {currentUser ? (
+        {currentUser ? (
+          <header className="mb-6 flex flex-col gap-5 rounded-[2rem] border border-white/60 bg-white/70 p-5 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/65 sm:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-sky-700 dark:bg-sky-950/50 dark:text-sky-200">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -869,27 +869,21 @@ export function SupabasePerfoPointsApp() {
                   Built for families with task proof photos, approval flows, point tracking, reward redemptions, and a layout that works cleanly on phones.
                 </p>
               </div>
-            ) : (
-              <div />
-            )}
-            <div className="flex items-center gap-3 self-end md:self-auto">
-              <ThemeSwitch />
-              {currentUser ? (
+              <div className="flex items-center gap-3 self-end md:self-auto">
+                <ThemeSwitch />
                 <Button onClick={handleLogout} className="rounded-full">
                   <LogOut className="h-4 w-4" />
                   Sign out
                 </Button>
-              ) : null}
+              </div>
             </div>
-          </div>
-          {currentUser ? (
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="rounded-full bg-slate-900 px-3 py-1 font-medium text-white dark:bg-slate-100 dark:text-slate-900">{currentUser.displayName}</span>
               <span className="rounded-full border border-sky-300/70 bg-sky-50 px-3 py-1 text-sky-700 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-200">{currentUser.role === "admin" ? "Admin dashboard" : "Kid dashboard"}</span>
               <span className="rounded-full border border-orange-300/70 bg-orange-50 px-3 py-1 text-orange-700 dark:border-orange-900 dark:bg-orange-950/50 dark:text-orange-200">{currentUser.role === "user" ? `${currentUser.points} points available` : `${pendingRequests.length} pending approvals`}</span>
             </div>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
         {isRecoveryMode ? (
           <Card className="mx-auto max-w-md border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
@@ -932,6 +926,7 @@ export function SupabasePerfoPointsApp() {
             onLogin={handleLogin}
             onSignup={handleSignup}
             onResetPassword={handleForgotPassword}
+            themeSwitch={<ThemeSwitch />}
           />
         ) : currentUser.role === "admin" ? (
           <AdminView
