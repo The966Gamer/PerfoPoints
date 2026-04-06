@@ -117,146 +117,186 @@ export function LoginView({
 
             {step === "auth" ? (
               <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <div className="max-w-3xl">
-                  <CardTitle className="text-4xl font-black uppercase tracking-[0.1em] sm:text-5xl">
-                    Choose Your Start
-                  </CardTitle>
-                  <CardDescription className="mt-4 text-base leading-7 sm:text-lg">
-                    Sign in to your family dashboard or create a new Perfo Points account.
-                  </CardDescription>
-                </div>
-                <div className="mt-8 flex max-w-xl flex-col gap-4 sm:flex-row">
-                  <Button
-                    type="button"
-                    className="h-14 flex-1 rounded-full text-base font-bold uppercase tracking-[0.1em]"
-                    onClick={() => {
-                      setShowSignin(true);
-                      setShowSignup(false);
-                      setShowReset(false);
-                    }}
-                  >
-                    <Lock className="h-4 w-4" />
-                    Sign in
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="h-14 flex-1 rounded-full text-base font-bold uppercase tracking-[0.1em]"
-                    onClick={() => {
-                      setShowSignin(false);
-                      setShowSignup(true);
-                      setShowReset(false);
-                    }}
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Sign up
-                  </Button>
-                </div>
-                <div className="mt-6 max-w-xl">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-12 rounded-full px-0"
-                    onClick={() => {
-                      setStep("features");
-                      setShowSignin(false);
-                      setShowSignup(false);
-                      setShowReset(false);
-                    }}
-                  >
-                    Back to features
-                  </Button>
-                </div>
+                {!showSignin && !showSignup && !showReset ? (
+                  <>
+                    <div className="max-w-3xl">
+                      <CardTitle className="text-4xl font-black uppercase tracking-[0.1em] sm:text-5xl">
+                        Choose Your Start
+                      </CardTitle>
+                      <CardDescription className="mt-4 text-base leading-7 sm:text-lg">
+                        Sign in to your family dashboard or create a new Perfo Points account.
+                      </CardDescription>
+                    </div>
+                    <div className="mt-8 flex max-w-xl flex-col gap-4 sm:flex-row">
+                      <Button
+                        type="button"
+                        className="h-14 flex-1 rounded-full text-base font-bold uppercase tracking-[0.1em]"
+                        onClick={() => {
+                          setShowSignin(true);
+                          setShowSignup(false);
+                          setShowReset(false);
+                        }}
+                      >
+                        <Lock className="h-4 w-4" />
+                        Sign in
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="h-14 flex-1 rounded-full text-base font-bold uppercase tracking-[0.1em]"
+                        onClick={() => {
+                          setShowSignin(false);
+                          setShowSignup(true);
+                          setShowReset(false);
+                        }}
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Sign up
+                      </Button>
+                    </div>
+                    <div className="mt-6 max-w-xl">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-12 rounded-full px-0"
+                        onClick={() => {
+                          setStep("features");
+                          setShowSignin(false);
+                          setShowSignup(false);
+                          setShowReset(false);
+                        }}
+                      >
+                        Back to features
+                      </Button>
+                    </div>
+                  </>
+                ) : null}
+
+                {showSignin ? (
+                  <div className="w-full max-w-xl rounded-[2rem] border border-white/60 bg-white/75 p-6 text-left shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-950/55">
+                    <div className="mb-6 text-center">
+                      <CardTitle className="text-3xl font-black uppercase tracking-[0.08em]">Sign in</CardTitle>
+                      <CardDescription className="mt-3 text-base">
+                        Use your email or username and your password to open the family dashboard.
+                      </CardDescription>
+                    </div>
+                    <form onSubmit={onLogin}>
+                      <div className="space-y-4">
+                        <Input value={loginForm.emailOrUsername} onChange={(event) => setLoginForm((previous) => ({ ...previous, emailOrUsername: event.target.value }))} placeholder="Email or username" />
+                        <Input type="password" value={loginForm.password} onChange={(event) => setLoginForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
+                      </div>
+                      <div className="mt-6 flex flex-col gap-3">
+                        <Button type="submit" className="w-full rounded-full">
+                          <Lock className="h-4 w-4" />
+                          Enter dashboard
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full rounded-full"
+                          onClick={() => {
+                            setShowSignin(false);
+                            setShowReset(true);
+                            setShowSignup(false);
+                          }}
+                        >
+                          <Mail className="h-4 w-4" />
+                          Reset password
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full rounded-full"
+                          onClick={() => {
+                            setShowSignin(false);
+                            setShowSignup(false);
+                            setShowReset(false);
+                          }}
+                        >
+                          Back
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                ) : null}
+
+                {showSignup ? (
+                  <div className="w-full max-w-xl rounded-[2rem] border border-white/60 bg-white/75 p-6 text-left shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-950/55">
+                    <div className="mb-6 text-center">
+                      <CardTitle className="text-3xl font-black uppercase tracking-[0.08em]">Create account</CardTitle>
+                      <CardDescription className="mt-3 text-base">
+                        Make a new Perfo Points account for your family and start tracking chores, rewards, proof photos, and progress.
+                      </CardDescription>
+                    </div>
+                    <form onSubmit={onSignup}>
+                      <div className="space-y-4">
+                        <div className="grid gap-2 rounded-2xl border border-white/60 bg-white/70 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-slate-950/40">
+                          <p>Includes:</p>
+                          <p>Task approvals and reward saving</p>
+                          <p>Photo proof uploads for completed chores</p>
+                          <p>Parent controls, resets, and family history</p>
+                        </div>
+                        <Input type="email" value={signupForm.email} onChange={(event) => setSignupForm((previous) => ({ ...previous, email: event.target.value }))} placeholder="Email" />
+                        <Input value={signupForm.username} onChange={(event) => setSignupForm((previous) => ({ ...previous, username: event.target.value }))} placeholder="Username" />
+                        <Input value={signupForm.displayName} onChange={(event) => setSignupForm((previous) => ({ ...previous, displayName: event.target.value }))} placeholder="Display name" />
+                        <Input type="password" value={signupForm.password} onChange={(event) => setSignupForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
+                      </div>
+                      <div className="mt-6 flex flex-col gap-3">
+                        <Button type="submit" className="w-full rounded-full">
+                          <UserPlus className="h-4 w-4" />
+                          Sign up
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full rounded-full"
+                          onClick={() => {
+                            setShowSignup(false);
+                            setShowSignin(true);
+                          }}
+                        >
+                          Already have an account? Sign in
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                ) : null}
+
+                {showReset ? (
+                  <div className="w-full max-w-xl rounded-[2rem] border border-white/60 bg-white/75 p-6 text-left shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-950/55">
+                    <div className="mb-6 text-center">
+                      <CardTitle className="text-3xl font-black uppercase tracking-[0.08em]">Reset password</CardTitle>
+                      <CardDescription className="mt-3 text-base">
+                        Send yourself a reset email.
+                      </CardDescription>
+                    </div>
+                    <div className="space-y-4">
+                      <Input type="email" value={resetEmail} onChange={(event) => setResetEmail(event.target.value)} placeholder="Email for reset link" />
+                    </div>
+                    <div className="mt-6 flex flex-col gap-3">
+                      <Button onClick={onResetPassword} className="w-full rounded-full">
+                        <Mail className="h-4 w-4" />
+                        Send reset link
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full rounded-full"
+                        onClick={() => {
+                          setShowReset(false);
+                          setShowSignin(true);
+                        }}
+                      >
+                        Back to sign in
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
         </CardContent>
       </Card>
-
-      {step === "auth" && showSignin ? (
-          <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-            <CardHeader>
-              <CardTitle>Sign in</CardTitle>
-              <CardDescription>Use your email or username and your password to open the family dashboard.</CardDescription>
-            </CardHeader>
-            <form onSubmit={onLogin}>
-              <CardContent className="space-y-4">
-                <Input value={loginForm.emailOrUsername} onChange={(event) => setLoginForm((previous) => ({ ...previous, emailOrUsername: event.target.value }))} placeholder="Email or username" />
-                <Input type="password" value={loginForm.password} onChange={(event) => setLoginForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3">
-                <Button type="submit" className="w-full rounded-full">
-                  <Lock className="h-4 w-4" />
-                  Enter dashboard
-                </Button>
-                <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => {
-                  setShowReset((previous) => !previous);
-                  setShowSignin(true);
-                  setShowSignup(false);
-                }}>
-                  <Mail className="h-4 w-4" />
-                  {showReset ? "Close reset" : "Reset password"}
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-      ) : null}
-
-      {step === "auth" && showSignup ? (
-        <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-          <CardHeader>
-            <CardTitle>Create account</CardTitle>
-            <CardDescription>Make a new Perfo Points account for your family and start tracking chores, rewards, proof photos, and progress.</CardDescription>
-          </CardHeader>
-          <form onSubmit={onSignup}>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2 rounded-2xl border border-white/60 bg-white/70 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-slate-950/40">
-                <p>Includes:</p>
-                <p>Task approvals and reward saving</p>
-                <p>Photo proof uploads for completed chores</p>
-                <p>Parent controls, resets, and family history</p>
-              </div>
-              <Input type="email" value={signupForm.email} onChange={(event) => setSignupForm((previous) => ({ ...previous, email: event.target.value }))} placeholder="Email" />
-              <Input value={signupForm.username} onChange={(event) => setSignupForm((previous) => ({ ...previous, username: event.target.value }))} placeholder="Username" />
-              <Input value={signupForm.displayName} onChange={(event) => setSignupForm((previous) => ({ ...previous, displayName: event.target.value }))} placeholder="Display name" />
-              <Input type="password" value={signupForm.password} onChange={(event) => setSignupForm((previous) => ({ ...previous, password: event.target.value }))} placeholder="Password" />
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-              <Button type="submit" className="w-full rounded-full">
-                <UserPlus className="h-4 w-4" />
-                Sign up
-              </Button>
-              <Button type="button" variant="ghost" className="w-full rounded-full" onClick={() => {
-                setShowSignup(false);
-                setShowSignin(true);
-              }}>
-                Already have an account? Sign in
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-      ) : null}
-
-      {showReset ? (
-        <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-          <CardHeader>
-            <CardTitle>Reset password</CardTitle>
-            <CardDescription>Send yourself a reset email.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input type="email" value={resetEmail} onChange={(event) => setResetEmail(event.target.value)} placeholder="Email for reset link" />
-          </CardContent>
-          <CardFooter className="flex gap-3">
-            <Button onClick={onResetPassword} className="flex-1 rounded-full">
-              <Mail className="h-4 w-4" />
-              Send reset link
-            </Button>
-            <Button type="button" variant="outline" className="rounded-full" onClick={() => setShowReset(false)}>
-              Close
-            </Button>
-          </CardFooter>
-        </Card>
-      ) : null}
     </div>
   );
 }
