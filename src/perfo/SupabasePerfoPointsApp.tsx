@@ -44,6 +44,7 @@ function mapProfile(
 export function SupabasePerfoPointsApp() {
   const [appState, setAppState] = useState<FamilyAppState>(INITIAL_STATE);
   const [loading, setLoading] = useState(true);
+  const [loadScreenTimedOut, setLoadScreenTimedOut] = useState(false);
   const [backendMessage, setBackendMessage] = useState<string | null>(null);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
@@ -84,6 +85,10 @@ export function SupabasePerfoPointsApp() {
   const pointProgress = currentUser?.role === "user" && totalAvailablePoints > 0
     ? Math.min(100, Math.round((currentUser.points / totalAvailablePoints) * 100))
     : 0;
+  const effectiveBackendMessage = backendMessage || (loadScreenTimedOut
+    ? "Still connecting to Supabase. You can keep using the sign-in screen, but if this keeps happening, run `supabase db push` and refresh."
+    : null);
+  const shouldShowAuthScreen = !currentUser && (!loading || loadScreenTimedOut || Boolean(effectiveBackendMessage) || Boolean(pendingVerificationEmail));
 
   const getFriendlyErrorMessage = (error: any, fallback: string) => {
     const message = error?.message || fallback;
@@ -305,6 +310,19 @@ export function SupabasePerfoPointsApp() {
     });
     return () => data.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadScreenTimedOut(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLoadScreenTimedOut(true);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loading]);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -992,11 +1010,7 @@ export function SupabasePerfoPointsApp() {
               </CardFooter>
             </form>
           </Card>
-        ) : loading ? (
-          <div className="rounded-3xl border border-white/60 bg-white/80 p-10 text-center shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-            Loading your Perfo Points data...
-          </div>
-        ) : !currentUser ? (
+        ) : shouldShowAuthScreen ? (
           <LoginView
             loginForm={loginForm}
             setLoginForm={setLoginForm}
@@ -1009,9 +1023,13 @@ export function SupabasePerfoPointsApp() {
             onResetPassword={handleForgotPassword}
             onResendVerification={handleResendVerification}
             themeSwitch={<ThemeSwitch />}
-            backendMessage={backendMessage}
+            backendMessage={effectiveBackendMessage}
             pendingVerificationEmail={pendingVerificationEmail}
           />
+        ) : loading ? (
+          <div className="rounded-3xl border border-white/60 bg-white/80 p-10 text-center shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
+            Loading your Perfo Points data...
+          </div>
         ) : currentUser.role === "admin" ? (
           <AdminView
             appState={appState}
