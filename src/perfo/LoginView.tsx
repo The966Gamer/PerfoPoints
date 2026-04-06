@@ -27,6 +27,7 @@ export function LoginView({
   onResetPassword: () => void;
 }) {
   const [showActions, setShowActions] = useState(false);
+  const [showSignin, setShowSignin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showReset, setShowReset] = useState(false);
 
@@ -49,6 +50,7 @@ export function LoginView({
                 className="h-14 rounded-full text-base font-bold uppercase tracking-[0.18em]"
                 onClick={() => {
                   setShowActions(true);
+                  setShowSignin(false);
                   setShowSignup(false);
                   setShowReset(false);
                 }}
@@ -84,6 +86,7 @@ export function LoginView({
                 type="button"
                 className="h-14 w-full rounded-full text-base font-bold uppercase tracking-[0.1em]"
                 onClick={() => {
+                  setShowSignin(false);
                   setShowSignup(true);
                   setShowReset(false);
                 }}
@@ -96,6 +99,7 @@ export function LoginView({
                 variant="secondary"
                 className="h-12 w-full rounded-full text-base font-semibold"
                 onClick={() => {
+                  setShowSignin(true);
                   setShowSignup(false);
                   setShowReset(false);
                 }}
@@ -107,7 +111,7 @@ export function LoginView({
           </Card>
         ) : null}
 
-        {showActions ? (
+        {showActions && showSignin ? (
           <Card className="border-white/60 bg-white/85 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
             <CardHeader>
               <CardTitle>Sign in</CardTitle>
@@ -126,7 +130,6 @@ export function LoginView({
                 <Button type="button" variant="outline" className="w-full rounded-full" onClick={() => {
                   setShowReset((previous) => !previous);
                   setShowSignup(false);
-                  setShowActions(true);
                 }}>
                   <Mail className="h-4 w-4" />
                   {showReset ? "Close reset" : "Reset password"}
