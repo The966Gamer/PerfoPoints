@@ -59,12 +59,16 @@ export function LoginView({
             </div>
           </div>
 
-          <div className="space-y-4">
-            <FeatureCard icon={<ClipboardCheck className="mb-3 h-8 w-8" />} title="Task approvals" body="Completed chores can include a proof photo before an admin approves the points." className="from-sky-500 to-cyan-400" />
-            <FeatureCard icon={<Gift className="mb-3 h-8 w-8" />} title="Reward redemptions" body="Kids save points for rewards while parents stay in control of the final approval." className="from-orange-500 to-amber-400" />
-            <FeatureCard icon={<Wallet className="mb-3 h-8 w-8" />} title="Balances and history" body="Track points earned, points spent, streaks, and family progress across devices." className="from-emerald-500 to-lime-400" />
-            <FeatureCard icon={<Shield className="mb-3 h-8 w-8" />} title="Parent tools" body="Admins can add users, reset passwords, approve tasks, and manage the whole family dashboard." className="from-fuchsia-500 to-pink-400" />
-          </div>
+          {showActions ? (
+            <div className="space-y-4">
+              <FeatureCard icon={<ClipboardCheck className="mb-3 h-8 w-8" />} title="Task approvals" body="Completed chores can include a proof photo before an admin approves the points." className="from-sky-500 to-cyan-400" />
+              <FeatureCard icon={<Gift className="mb-3 h-8 w-8" />} title="Reward redemptions" body="Kids save points for rewards while parents stay in control of the final approval." className="from-orange-500 to-amber-400" />
+              <FeatureCard icon={<Wallet className="mb-3 h-8 w-8" />} title="Balances and history" body="Track points earned, points spent, streaks, and family progress across devices." className="from-emerald-500 to-lime-400" />
+              <FeatureCard icon={<Shield className="mb-3 h-8 w-8" />} title="Parent tools" body="Admins can add users, reset passwords, approve tasks, and manage the whole family dashboard." className="from-fuchsia-500 to-pink-400" />
+            </div>
+          ) : (
+            <div className="hidden lg:block" />
+          )}
         </CardContent>
       </Card>
 

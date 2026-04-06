@@ -854,17 +854,21 @@ export function SupabasePerfoPointsApp() {
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <header className="mb-6 flex flex-col gap-5 rounded-[2rem] border border-white/60 bg-white/70 p-5 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/65 sm:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-sky-700 dark:bg-sky-950/50 dark:text-sky-200">
-                <Sparkles className="h-3.5 w-3.5" />
-                Perfo Points
+            {currentUser ? (
+              <div>
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-sky-700 dark:bg-sky-950/50 dark:text-sky-200">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Perfo Points
+                </div>
+                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">PERFO POINTS for chores, goals, and rewards.</h1>
+                <p className="mt-2 max-w-3xl text-sm text-muted-foreground sm:text-base">
+                  Built for families with task proof photos, approval flows, point tracking, reward redemptions, and a layout that works cleanly on phones.
+                </p>
               </div>
-              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">PERFO POINTS for chores, goals, and rewards.</h1>
-              <p className="mt-2 max-w-3xl text-sm text-muted-foreground sm:text-base">
-                Built for families with task proof photos, approval flows, point tracking, reward redemptions, and a layout that works cleanly on phones.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-3 self-end md:self-auto">
               <ThemeSwitch />
               {currentUser ? (
                 <Button onClick={handleLogout} className="rounded-full">
