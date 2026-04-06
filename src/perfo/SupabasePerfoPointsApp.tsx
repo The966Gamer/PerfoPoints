@@ -447,7 +447,11 @@ export function SupabasePerfoPointsApp() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setAdminPassword("");
-    toast.success("Signed out.");
+    setPendingVerificationEmail("");
+    setBackendMessage(null);
+    setSessionUserId(null);
+    setAppState(INITIAL_STATE);
+    window.location.replace(window.location.origin);
   };
 
   const handleTaskSubmit = async (event: FormEvent<HTMLFormElement>) => {
